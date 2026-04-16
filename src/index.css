@@ -384,6 +384,50 @@ body {
   border-radius: 2px;
 }
 
+.wave-countdown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.wc-label {
+  font-family: var(--font-display);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+}
+
+.wc-timer {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cyan);
+  min-width: 24px;
+  text-align: center;
+}
+
+.wc-skip {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.15s;
+}
+
+.wc-skip:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
 .wave-status {
   display: flex;
   flex-direction: column;
@@ -1047,6 +1091,66 @@ body {
 .lc-victory-sub {
   font-size: 14px;
   color: var(--text-bright);
+}
+
+/* ---- PAUSE ---- */
+
+.pause-panel {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+.pause-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 48px;
+  letter-spacing: 8px;
+  color: var(--text-bright);
+}
+
+.pause-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pause-btn {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 2px;
+  padding: 12px 40px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 200px;
+}
+
+.resume-btn {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.resume-btn:hover {
+  background: rgba(0, 255, 255, 0.08);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.15);
+}
+
+.menu-btn:hover {
+  border-color: var(--text);
+  color: var(--text-bright);
+}
+
+.pause-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 4px;
 }
 
 @keyframes fadeIn {

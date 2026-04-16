@@ -42,6 +42,17 @@ export default function GameCanvas({ onStateChange }: Props) {
     const col = Math.floor(px / CELL);
     const row = Math.floor(py / CELL);
 
+    // Check if clicking on an existing tower
+    const clicked = towers.find(t => t.col === col && t.row === row);
+
+    if (clicked) {
+      // Always select existing tower, even if placing
+      state.selectedTowerType = null;
+      state.selectedTower = clicked;
+      onStateChange();
+      return;
+    }
+
     if (state.selectedTowerType) {
       const type = TOWER_TYPES[state.selectedTowerType];
       if (type && state.gold >= type.cost && canPlace(col, row)) {
@@ -51,8 +62,7 @@ export default function GameCanvas({ onStateChange }: Props) {
       return;
     }
 
-    const clicked = towers.find(t => t.col === col && t.row === row);
-    state.selectedTower = clicked ?? null;
+    state.selectedTower = null;
     onStateChange();
   }, [onStateChange]);
 

@@ -21,12 +21,15 @@ export const state: GameState = {
   waveNum: 0,
   waveName: '',
   phase: 'waiting',
+  paused: false,
   speed: 1,
   score: 0,
   enemiesKilled: 0,
   waveEnemiesTotal: 0,
   waveEnemiesCleared: 0,
   waveBonus: 0,
+  waveCountdown: 5,
+  announcement: null,
   levelNum: 1,
   levelWave: 0,
   levelWavesTotal: LEVELS[0].waves,
@@ -102,12 +105,15 @@ export function startLevel(levelNum: number) {
   state.levelName = level.name;
   state.levelWave = 0;
   state.levelWavesTotal = level.waves;
-  state.gold = level.startGold + (levelNum > 1 ? state.score : 0);
+  state.gold = level.startGold;
   state.lives = level.lives;
   state.maxLives = level.lives;
   state.waveNum = level.waveOffset;
   state.waveName = '';
   state.phase = 'waiting';
+  state.paused = false;
+  state.waveCountdown = 0;
+  state.announcement = null;
   state.selectedTowerType = null;
   state.selectedTower = null;
 
@@ -225,8 +231,13 @@ export function fuseTowers(towerA: Tower, towerB: Tower): boolean {
   const idx = towers.indexOf(towerB);
   if (idx >= 0) towers.splice(idx, 1);
 
+  // Fusion level based on combined upgrade levels of both parents
+  // Both at lv0 = fusion lv0, one maxed = fusion lv1, both maxed = fusion lv2
+  const combinedLevels = towerA.level + towerB.level;
+  const fusionLevel = Math.min(combinedLevels, fusionType.levels.length - 1);
+
   towerA.type = fusionType;
-  towerA.level = 0;
+  towerA.level = fusionLevel;
   towerA.totalInvested += towerB.totalInvested;
   towerA.kills += towerB.kills;
   towerA.pulseAnim = 1.0;
@@ -276,7 +287,7 @@ export function startWave(): boolean {
         type: entry.type,
         hp: Math.round(et.hp * wave.hpScale),
         speed: et.speed,
-        gold: et.gold + Math.floor(state.waveNum * 0.5),
+        gold: et.gold,
         delay: entry.delay,
       });
     }
@@ -293,6 +304,7 @@ export function startWave(): boolean {
   state.waveEnemiesCleared = 0;
   spawnTimer = 0;
   state.phase = 'spawning';
+  state.announcement = { wave: state.levelWave, name: state.waveName, timer: 2.5 };
   return true;
 }
 
@@ -514,7 +526,7 @@ function fireProjectile(tower: Tower, target: Enemy) {
 // ---- MAIN UPDATE ----
 
 export function update(dt: number): void {
-  if (state.phase === 'gameover' || state.phase === 'level_complete') return;
+  if (state.phase === 'gameover' || state.phase === 'level_complete' || state.paused) return;
 
   const gameDt = dt * state.speed;
 
@@ -589,6 +601,15 @@ export function update(dt: number): void {
       state.phase = 'level_complete';
     } else {
       state.phase = 'waiting';
+      state.waveCountdown = 5;
+    }
+  }
+
+  // Auto-start countdown
+  if (state.phase === 'waiting' && state.levelWave < state.levelWavesTotal && state.levelWave > 0) {
+    state.waveCountdown -= gameDt;
+    if (state.waveCountdown <= 0) {
+      startWave();
     }
   }
 
@@ -689,6 +710,12 @@ export function update(dt: number): void {
     if (p.type === 'ring' && p.ringRadius != null && p.ringMaxRadius != null) {
       p.ringRadius = 5 + (p.ringMaxRadius - 5) * (1 - p.life / p.maxLife);
     }
+  }
+
+  // Announcement timer
+  if (state.announcement) {
+    state.announcement.timer -= gameDt;
+    if (state.announcement.timer <= 0) state.announcement = null;
   }
 
   // Floating texts

@@ -46,14 +46,27 @@ export default function Toolbar({ onStateChange }: Props) {
       </div>
 
       <div className="toolbar-actions">
-        {canSend && (
+        {canSend && state.levelWave === 0 && (
           <button
             className="action-btn send-wave ready"
             onClick={() => { startWave(); onStateChange(); }}
           >
-            <span>SEND WAVE</span>
+            <span>START</span>
             <span className="action-key">SPACE</span>
           </button>
+        )}
+
+        {canSend && state.levelWave > 0 && (
+          <div className="wave-countdown">
+            <span className="wc-label">NEXT WAVE</span>
+            <span className="wc-timer">{Math.ceil(state.waveCountdown)}s</span>
+            <button
+              className="wc-skip"
+              onClick={() => { startWave(); onStateChange(); }}
+            >
+              SKIP
+            </button>
+          </div>
         )}
 
         {isActive && (

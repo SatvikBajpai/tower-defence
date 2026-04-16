@@ -140,6 +140,59 @@ function buildBackground(): HTMLCanvasElement {
     }
   }
 
+  // Start & end portals
+  const startPt = pathWaypoints[0];
+  const endPt = pathWaypoints[pathWaypoints.length - 1];
+
+  // Start portal - green glow gate
+  const sx = Math.max(CELL * 0.6, startPt.x);
+  const sy = startPt.y;
+  bg.save();
+  bg.shadowColor = '#00ff66';
+  bg.shadowBlur = 18;
+  bg.strokeStyle = '#00ff66';
+  bg.lineWidth = 2.5;
+  bg.beginPath();
+  bg.moveTo(sx - 2, sy - CELL * 0.6);
+  bg.lineTo(sx - 2, sy + CELL * 0.6);
+  bg.stroke();
+  bg.lineWidth = 1;
+  bg.beginPath();
+  bg.moveTo(sx + 4, sy - CELL * 0.4);
+  bg.lineTo(sx + 4, sy + CELL * 0.4);
+  bg.stroke();
+  // Glow fill
+  const sgr = bg.createRadialGradient(sx, sy, 0, sx, sy, CELL * 0.7);
+  sgr.addColorStop(0, 'rgba(0, 255, 102, 0.12)');
+  sgr.addColorStop(1, 'rgba(0, 255, 102, 0)');
+  bg.fillStyle = sgr;
+  bg.fillRect(sx - CELL * 0.7, sy - CELL * 0.7, CELL * 1.4, CELL * 1.4);
+  bg.restore();
+
+  // End portal - red glow gate
+  const ex = Math.min(CANVAS_W - CELL * 0.6, endPt.x);
+  const ey = endPt.y;
+  bg.save();
+  bg.shadowColor = '#ff0044';
+  bg.shadowBlur = 18;
+  bg.strokeStyle = '#ff0044';
+  bg.lineWidth = 2.5;
+  bg.beginPath();
+  bg.moveTo(ex + 2, ey - CELL * 0.6);
+  bg.lineTo(ex + 2, ey + CELL * 0.6);
+  bg.stroke();
+  bg.lineWidth = 1;
+  bg.beginPath();
+  bg.moveTo(ex - 4, ey - CELL * 0.4);
+  bg.lineTo(ex - 4, ey + CELL * 0.4);
+  bg.stroke();
+  const egr = bg.createRadialGradient(ex, ey, 0, ex, ey, CELL * 0.7);
+  egr.addColorStop(0, 'rgba(255, 0, 68, 0.12)');
+  egr.addColorStop(1, 'rgba(255, 0, 68, 0)');
+  bg.fillStyle = egr;
+  bg.fillRect(ex - CELL * 0.7, ey - CELL * 0.7, CELL * 1.4, CELL * 1.4);
+  bg.restore();
+
   // Vignette
   const vigGrad = bg.createRadialGradient(
     CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.3,
@@ -910,6 +963,126 @@ export function render(ctx: CanvasRenderingContext2D, _time: number): void {
     ctx.shadowBlur = 4;
     ctx.font = 'bold 13px "Share Tech Mono", monospace';
     ctx.fillText(ft.text, ft.x, ft.y);
+    ctx.restore();
+  }
+
+  // ---- WAVE ANNOUNCEMENT ----
+  const ann = state.announcement;
+  if (ann) {
+    const maxT = 2.5;
+    const t = 1 - ann.timer / maxT; // 0 -> 1
+    const cx = CANVAS_W / 2;
+    const cy = CANVAS_H / 2;
+
+    // Phase: 0-0.3 slide in, 0.3-0.7 hold, 0.7-1.0 fade out
+    let alpha: number;
+    let slideX: number;
+    if (t < 0.15) {
+      // Slam in from left
+      const p = t / 0.15;
+      alpha = p;
+      slideX = (1 - p * p) * -200;
+    } else if (t < 0.7) {
+      alpha = 1;
+      slideX = 0;
+    } else {
+      const p = (t - 0.7) / 0.3;
+      alpha = 1 - p;
+      slideX = 0;
+    }
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Full-width dark band
+    const bandH = 80;
+    const bandY = cy - bandH / 2;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, bandY, CANVAS_W, bandH);
+
+    // Scan line accent at top and bottom of band
+    const isBoss = ann.name === ann.name.toUpperCase();
+    const accentColor = isBoss ? '#ff0044' : '#00ffff';
+    ctx.shadowColor = accentColor;
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(0, bandY, CANVAS_W, 1.5);
+    ctx.fillRect(0, bandY + bandH - 1.5, CANVAS_W, 1.5);
+
+    // Glitch offset for boss waves
+    const glitchX = isBoss ? (Math.random() - 0.5) * 4 * alpha : 0;
+    const glitchY = isBoss ? (Math.random() - 0.5) * 2 * alpha : 0;
+
+    // Wave number
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = `${accentColor}88`;
+    ctx.font = '600 11px "Orbitron", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.letterSpacing = '4px';
+    ctx.fillText(
+      `WAVE ${ann.wave}`,
+      cx + slideX + glitchX, cy - 18 + glitchY,
+    );
+
+    // Wave name - big and dramatic
+    ctx.shadowColor = accentColor;
+    ctx.shadowBlur = isBoss ? 20 : 10;
+    ctx.fillStyle = isBoss ? '#ff0044' : '#ffffff';
+    ctx.font = `900 ${isBoss ? 28 : 24}px "Orbitron", sans-serif`;
+    ctx.fillText(
+      ann.name,
+      cx + slideX + glitchX * 2, cy + 10 + glitchY,
+    );
+
+    // Boss waves: extra red glow flash
+    if (isBoss && t < 0.3) {
+      ctx.globalAlpha = alpha * 0.15 * (1 - t / 0.3);
+      ctx.fillStyle = '#ff0044';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    }
+
+    ctx.restore();
+  }
+
+  // ---- COUNTDOWN OVERLAY ----
+  if (state.phase === 'waiting' && state.levelWave > 0 && state.levelWave < state.levelWavesTotal && state.waveCountdown > 0) {
+    const cd = state.waveCountdown;
+    const maxCd = 5;
+    const progress = 1 - cd / maxCd; // 0 at start, 1 when about to fire
+
+    // Size grows from 28 to 64 as countdown approaches 0
+    const fontSize = 28 + progress * 36;
+    // Opacity grows from 0.2 to 1
+    const baseAlpha = 0.2 + progress * 0.8;
+    // Glow grows
+    const glowSize = 6 + progress * 20;
+    // Color shifts from cyan to red-ish in last second
+    const isUrgent = cd <= 1.5;
+    const color = isUrgent ? '#ff4444' : '#00ffff';
+
+    ctx.save();
+    ctx.globalAlpha = baseAlpha;
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = glowSize;
+    ctx.font = `900 ${Math.round(fontSize)}px "Orbitron", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(Math.ceil(cd)), CANVAS_W / 2, CANVAS_H / 2);
+
+    // Expanding ring pulse on each second tick
+    const frac = cd - Math.floor(cd);
+    if (frac > 0.8) {
+      const ringProgress = (1 - frac) / 0.2; // 0 to 1 within the tick
+      ctx.globalAlpha = (1 - ringProgress) * 0.3;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(CANVAS_W / 2, CANVAS_H / 2, fontSize * 0.6 + ringProgress * 40, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     ctx.restore();
   }
 }

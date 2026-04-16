@@ -17,305 +17,305 @@ const WAVE_DEFS: WaveDef[] = [
   // ── LEVEL 1: OUTPOST (waves 1-7) ──
   {
     name: 'First Contact',
-    entries: [{ type: 'scout', count: 10, delay: 700 }],
+    entries: [{ type: 'scout', count: 14, delay: 3500 }],
   },
   {
     name: 'Recon Party',
-    entries: [{ type: 'scout', count: 15, delay: 500 }],
+    entries: [{ type: 'scout', count: 18, delay: 2800 }],
   },
   {
     name: 'Probing Attack',
     entries: [
-      { type: 'scout', count: 12, delay: 450 },
-      { type: 'drone', count: 3, delay: 900 },
+      { type: 'scout', count: 14, delay: 2400 },
+      { type: 'drone', count: 5, delay: 4000 },
     ],
   },
   {
     name: 'Armored Column',
     entries: [
-      { type: 'drone', count: 8, delay: 650 },
-      { type: 'scout', count: 10, delay: 450 },
+      { type: 'drone', count: 10, delay: 3200 },
+      { type: 'scout', count: 12, delay: 2200 },
     ],
   },
   {
     name: 'Scout Rush',
     entries: [
-      { type: 'scout', count: 20, delay: 320 },
-      { type: 'drone', count: 5, delay: 700 },
+      { type: 'scout', count: 22, delay: 1800 },
+      { type: 'drone', count: 6, delay: 3500 },
     ],
   },
   {
     name: 'Hammer & Anvil',
     entries: [
-      { type: 'drone', count: 14, delay: 500 },
-      { type: 'scout', count: 18, delay: 350 },
-      { type: 'mech', count: 2, delay: 1200 },
+      { type: 'drone', count: 14, delay: 2600 },
+      { type: 'scout', count: 18, delay: 1800 },
+      { type: 'mech', count: 3, delay: 5000 },
     ],
   },
   {
     name: 'WARDEN',
     entries: [
       { type: 'boss', count: 1, delay: 0 },
-      { type: 'drone', count: 10, delay: 500 },
-      { type: 'scout', count: 15, delay: 350 },
+      { type: 'drone', count: 12, delay: 2600 },
+      { type: 'scout', count: 16, delay: 1800 },
     ],
-    bonus: 40,
+    bonus: 25,
   },
 
   // ── LEVEL 2: CROSSROADS - introduces Phantom + Sprinter ──
   {
     name: 'Swarm Warning',
     entries: [
-      { type: 'swarm', count: 30, delay: 180 },
-      { type: 'scout', count: 10, delay: 500 },
+      { type: 'swarm', count: 30, delay: 1200 },
+      { type: 'scout', count: 12, delay: 2400 },
     ],
   },
   {
     name: 'Ghost Recon',
     entries: [
-      { type: 'phantom', count: 6, delay: 800 },
-      { type: 'scout', count: 12, delay: 400 },
+      { type: 'phantom', count: 8, delay: 3800 },
+      { type: 'scout', count: 14, delay: 2200 },
     ],
   },
   {
     name: 'Heavy Hitters',
     entries: [
-      { type: 'mech', count: 5, delay: 900 },
-      { type: 'drone', count: 10, delay: 500 },
-      { type: 'phantom', count: 4, delay: 700 },
+      { type: 'mech', count: 6, delay: 4500 },
+      { type: 'drone', count: 12, delay: 2600 },
+      { type: 'phantom', count: 5, delay: 3500 },
     ],
   },
   {
     name: 'Blitz Runners',
     entries: [
-      { type: 'sprinter', count: 8, delay: 600 },
-      { type: 'swarm', count: 25, delay: 180 },
-      { type: 'scout', count: 15, delay: 350 },
+      { type: 'sprinter', count: 10, delay: 3200 },
+      { type: 'swarm', count: 25, delay: 1100 },
+      { type: 'scout', count: 16, delay: 1800 },
     ],
   },
   {
     name: 'Iron Fist',
     entries: [
-      { type: 'mech', count: 8, delay: 750 },
-      { type: 'drone', count: 12, delay: 450 },
-      { type: 'phantom', count: 5, delay: 600 },
-      { type: 'sprinter', count: 4, delay: 700 },
+      { type: 'mech', count: 8, delay: 3800 },
+      { type: 'drone', count: 14, delay: 2400 },
+      { type: 'phantom', count: 6, delay: 3200 },
+      { type: 'sprinter', count: 5, delay: 3500 },
     ],
   },
   {
     name: 'Full Assault',
     entries: [
-      { type: 'mech', count: 6, delay: 800 },
-      { type: 'drone', count: 16, delay: 400 },
-      { type: 'phantom', count: 6, delay: 550 },
-      { type: 'swarm', count: 25, delay: 180 },
+      { type: 'mech', count: 6, delay: 4000 },
+      { type: 'drone', count: 16, delay: 2200 },
+      { type: 'phantom', count: 8, delay: 2800 },
+      { type: 'swarm', count: 25, delay: 1100 },
     ],
   },
   {
     name: 'BEHEMOTH',
     entries: [
       { type: 'boss', count: 1, delay: 0 },
-      { type: 'sprinter', count: 6, delay: 500 },
-      { type: 'phantom', count: 4, delay: 600 },
-      { type: 'drone', count: 12, delay: 400 },
+      { type: 'sprinter', count: 8, delay: 2800 },
+      { type: 'phantom', count: 6, delay: 3200 },
+      { type: 'drone', count: 14, delay: 2200 },
     ],
-    bonus: 60,
+    bonus: 35,
   },
 
   // ── LEVEL 3: SERPENTINE - introduces Splitter ──
   {
     name: 'Speed Demon',
     entries: [
-      { type: 'scout', count: 35, delay: 220 },
-      { type: 'sprinter', count: 8, delay: 500 },
+      { type: 'scout', count: 30, delay: 1400 },
+      { type: 'sprinter', count: 10, delay: 2800 },
     ],
   },
   {
     name: 'Cell Division',
     entries: [
-      { type: 'splitter', count: 8, delay: 700 },
-      { type: 'drone', count: 8, delay: 500 },
+      { type: 'splitter', count: 10, delay: 3500 },
+      { type: 'drone', count: 10, delay: 2600 },
     ],
   },
   {
     name: 'Blitz',
     entries: [
-      { type: 'swarm', count: 40, delay: 120 },
-      { type: 'splitter', count: 6, delay: 650 },
-      { type: 'phantom', count: 5, delay: 550 },
+      { type: 'swarm', count: 40, delay: 900 },
+      { type: 'splitter', count: 8, delay: 3200 },
+      { type: 'phantom', count: 6, delay: 2800 },
     ],
   },
   {
     name: 'Combined Arms',
     entries: [
-      { type: 'mech', count: 8, delay: 700 },
-      { type: 'splitter', count: 8, delay: 600 },
-      { type: 'swarm', count: 30, delay: 160 },
-      { type: 'sprinter', count: 6, delay: 500 },
+      { type: 'mech', count: 8, delay: 3800 },
+      { type: 'splitter', count: 10, delay: 3000 },
+      { type: 'swarm', count: 30, delay: 1000 },
+      { type: 'sprinter', count: 6, delay: 2800 },
     ],
   },
   {
     name: 'Breakthrough',
     entries: [
-      { type: 'mech', count: 10, delay: 600 },
-      { type: 'phantom', count: 8, delay: 500 },
-      { type: 'splitter', count: 6, delay: 600 },
-      { type: 'drone', count: 12, delay: 400 },
+      { type: 'mech', count: 10, delay: 3200 },
+      { type: 'phantom', count: 10, delay: 2600 },
+      { type: 'splitter', count: 8, delay: 3000 },
+      { type: 'drone', count: 12, delay: 2200 },
     ],
   },
   {
     name: 'Pressure Point',
     entries: [
-      { type: 'splitter', count: 10, delay: 500 },
-      { type: 'swarm', count: 40, delay: 130 },
-      { type: 'mech', count: 6, delay: 700 },
+      { type: 'splitter', count: 12, delay: 2600 },
+      { type: 'swarm', count: 40, delay: 850 },
+      { type: 'mech', count: 6, delay: 4000 },
     ],
   },
   {
     name: 'TWIN TERRORS',
     entries: [
-      { type: 'boss', count: 2, delay: 2500 },
-      { type: 'splitter', count: 8, delay: 550 },
-      { type: 'phantom', count: 6, delay: 500 },
-      { type: 'mech', count: 6, delay: 600 },
+      { type: 'boss', count: 2, delay: 12000 },
+      { type: 'splitter', count: 10, delay: 2800 },
+      { type: 'phantom', count: 8, delay: 2600 },
+      { type: 'mech', count: 6, delay: 3500 },
     ],
-    bonus: 80,
+    bonus: 45,
   },
 
   // ── LEVEL 4: SPIRAL - introduces Necro + Guardian ──
   {
     name: 'Undying Swarm',
     entries: [
-      { type: 'necro', count: 4, delay: 1000 },
-      { type: 'swarm', count: 30, delay: 150 },
-      { type: 'scout', count: 15, delay: 300 },
+      { type: 'necro', count: 5, delay: 5000 },
+      { type: 'swarm', count: 30, delay: 1000 },
+      { type: 'scout', count: 16, delay: 1800 },
     ],
   },
   {
     name: 'Shield Wall',
     entries: [
-      { type: 'guardian', count: 4, delay: 900 },
-      { type: 'mech', count: 10, delay: 600 },
-      { type: 'drone', count: 12, delay: 450 },
+      { type: 'guardian', count: 5, delay: 4500 },
+      { type: 'mech', count: 10, delay: 3200 },
+      { type: 'drone', count: 14, delay: 2400 },
     ],
   },
   {
     name: 'Relentless',
     entries: [
-      { type: 'necro', count: 5, delay: 800 },
-      { type: 'splitter', count: 8, delay: 550 },
-      { type: 'sprinter', count: 8, delay: 500 },
-      { type: 'swarm', count: 30, delay: 140 },
+      { type: 'necro', count: 6, delay: 4200 },
+      { type: 'splitter', count: 10, delay: 2800 },
+      { type: 'sprinter', count: 8, delay: 2600 },
+      { type: 'swarm', count: 30, delay: 950 },
     ],
   },
   {
     name: 'Juggernaut',
     entries: [
-      { type: 'guardian', count: 6, delay: 800 },
-      { type: 'mech', count: 12, delay: 550 },
-      { type: 'phantom', count: 6, delay: 500 },
-      { type: 'drone', count: 15, delay: 350 },
+      { type: 'guardian', count: 6, delay: 4000 },
+      { type: 'mech', count: 12, delay: 3000 },
+      { type: 'phantom', count: 8, delay: 2600 },
+      { type: 'drone', count: 16, delay: 2000 },
     ],
   },
   {
     name: 'Chaos Protocol',
     entries: [
-      { type: 'necro', count: 6, delay: 700 },
-      { type: 'guardian', count: 4, delay: 800 },
-      { type: 'splitter', count: 8, delay: 550 },
-      { type: 'swarm', count: 40, delay: 120 },
+      { type: 'necro', count: 6, delay: 3800 },
+      { type: 'guardian', count: 5, delay: 4200 },
+      { type: 'splitter', count: 10, delay: 2800 },
+      { type: 'swarm', count: 40, delay: 800 },
     ],
   },
   {
     name: 'Last Stand',
     entries: [
-      { type: 'guardian', count: 6, delay: 700 },
-      { type: 'necro', count: 5, delay: 700 },
-      { type: 'mech', count: 10, delay: 550 },
-      { type: 'sprinter', count: 8, delay: 450 },
-      { type: 'phantom', count: 6, delay: 500 },
+      { type: 'guardian', count: 6, delay: 3800 },
+      { type: 'necro', count: 6, delay: 3600 },
+      { type: 'mech', count: 10, delay: 3000 },
+      { type: 'sprinter', count: 8, delay: 2600 },
+      { type: 'phantom', count: 8, delay: 2600 },
     ],
   },
   {
     name: 'OMEGA BREACH',
     entries: [
-      { type: 'boss', count: 3, delay: 2000 },
-      { type: 'guardian', count: 4, delay: 700 },
-      { type: 'necro', count: 4, delay: 700 },
-      { type: 'mech', count: 8, delay: 550 },
-      { type: 'splitter', count: 6, delay: 500 },
+      { type: 'boss', count: 3, delay: 10000 },
+      { type: 'guardian', count: 5, delay: 3800 },
+      { type: 'necro', count: 5, delay: 3600 },
+      { type: 'mech', count: 8, delay: 3000 },
+      { type: 'splitter', count: 8, delay: 2600 },
     ],
-    bonus: 100,
+    bonus: 55,
   },
 
   // ── LEVEL 5: NEXUS - everything at once ──
   {
     name: 'Endless Tide',
     entries: [
-      { type: 'sprinter', count: 12, delay: 400 },
-      { type: 'phantom', count: 10, delay: 450 },
-      { type: 'swarm', count: 50, delay: 100 },
+      { type: 'sprinter', count: 14, delay: 2200 },
+      { type: 'phantom', count: 12, delay: 2400 },
+      { type: 'swarm', count: 50, delay: 700 },
     ],
   },
   {
     name: 'Death March',
     entries: [
-      { type: 'guardian', count: 6, delay: 700 },
-      { type: 'necro', count: 6, delay: 650 },
-      { type: 'mech', count: 14, delay: 500 },
-      { type: 'splitter', count: 8, delay: 550 },
+      { type: 'guardian', count: 8, delay: 3600 },
+      { type: 'necro', count: 8, delay: 3400 },
+      { type: 'mech', count: 14, delay: 2800 },
+      { type: 'splitter', count: 10, delay: 2600 },
     ],
   },
   {
     name: 'Extinction Event',
     entries: [
-      { type: 'swarm', count: 60, delay: 90 },
-      { type: 'splitter', count: 12, delay: 450 },
-      { type: 'necro', count: 6, delay: 600 },
-      { type: 'phantom', count: 8, delay: 500 },
+      { type: 'swarm', count: 60, delay: 600 },
+      { type: 'splitter', count: 14, delay: 2400 },
+      { type: 'necro', count: 8, delay: 3200 },
+      { type: 'phantom', count: 10, delay: 2600 },
     ],
   },
   {
     name: 'Total War',
     entries: [
-      { type: 'guardian', count: 8, delay: 600 },
-      { type: 'mech', count: 14, delay: 450 },
-      { type: 'necro', count: 6, delay: 600 },
-      { type: 'splitter', count: 10, delay: 500 },
-      { type: 'sprinter', count: 10, delay: 400 },
+      { type: 'guardian', count: 8, delay: 3400 },
+      { type: 'mech', count: 14, delay: 2600 },
+      { type: 'necro', count: 8, delay: 3200 },
+      { type: 'splitter', count: 12, delay: 2600 },
+      { type: 'sprinter', count: 10, delay: 2200 },
     ],
   },
   {
     name: 'Darkest Hour',
     entries: [
-      { type: 'boss', count: 2, delay: 2000 },
-      { type: 'guardian', count: 6, delay: 600 },
-      { type: 'necro', count: 5, delay: 600 },
-      { type: 'phantom', count: 8, delay: 450 },
-      { type: 'swarm', count: 40, delay: 130 },
+      { type: 'boss', count: 2, delay: 10000 },
+      { type: 'guardian', count: 8, delay: 3200 },
+      { type: 'necro', count: 6, delay: 3200 },
+      { type: 'phantom', count: 10, delay: 2400 },
+      { type: 'swarm', count: 40, delay: 850 },
     ],
   },
   {
     name: 'No Mercy',
     entries: [
-      { type: 'guardian', count: 8, delay: 500 },
-      { type: 'necro', count: 8, delay: 500 },
-      { type: 'splitter', count: 12, delay: 400 },
-      { type: 'sprinter', count: 10, delay: 400 },
-      { type: 'mech', count: 12, delay: 450 },
+      { type: 'guardian', count: 10, delay: 2800 },
+      { type: 'necro', count: 10, delay: 2800 },
+      { type: 'splitter', count: 14, delay: 2200 },
+      { type: 'sprinter', count: 12, delay: 2200 },
+      { type: 'mech', count: 12, delay: 2600 },
     ],
   },
   {
     name: 'APOCALYPSE',
     entries: [
-      { type: 'boss', count: 4, delay: 1800 },
-      { type: 'guardian', count: 6, delay: 550 },
-      { type: 'necro', count: 6, delay: 550 },
-      { type: 'splitter', count: 10, delay: 450 },
-      { type: 'phantom', count: 8, delay: 450 },
-      { type: 'sprinter', count: 8, delay: 400 },
+      { type: 'boss', count: 4, delay: 8000 },
+      { type: 'guardian', count: 8, delay: 3000 },
+      { type: 'necro', count: 8, delay: 3000 },
+      { type: 'splitter', count: 12, delay: 2400 },
+      { type: 'phantom', count: 10, delay: 2400 },
+      { type: 'sprinter', count: 10, delay: 2200 },
     ],
-    bonus: 150,
+    bonus: 75,
   },
 ];
 
@@ -328,7 +328,7 @@ function scaleWave(baseDef: WaveDef, waveNum: number): WaveDef {
     entries: baseDef.entries.map(e => ({
       ...e,
       count: Math.round(e.count * countScale),
-      delay: Math.max(60, Math.round(e.delay * 0.92)),
+      delay: Math.max(400, Math.round(e.delay * 0.92)),
     })),
     bonus: baseDef.bonus ? Math.round(baseDef.bonus * (1 + cycle * 0.2)) : undefined,
   };
@@ -346,7 +346,7 @@ export function generateWave(waveNum: number): WaveData {
     def = scaleWave(baseDef, waveNum);
   }
 
-  const bonus = def.bonus ?? (8 + waveNum * 2);
+  const bonus = def.bonus ?? (5 + waveNum);
 
   return {
     name: def.name,

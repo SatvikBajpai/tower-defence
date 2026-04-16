@@ -155,6 +155,7 @@ export interface GameState {
   waveNum: number;
   waveName: string;
   phase: 'waiting' | 'spawning' | 'active' | 'gameover' | 'level_complete';
+  paused: boolean;
   speed: number;
   score: number;
   enemiesKilled: number;
@@ -165,6 +166,8 @@ export interface GameState {
   levelWave: number;
   levelWavesTotal: number;
   levelName: string;
+  waveCountdown: number;
+  announcement: { wave: number; name: string; timer: number } | null;
   selectedTowerType: string | null;
   selectedTower: Tower | null;
   mouseGrid: Point | null;

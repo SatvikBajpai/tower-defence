@@ -1,8 +1,8 @@
 import type { TowerType, EnemyType } from './types';
 
 export const CELL = 40;
-export const COLS = 24;
-export const ROWS = 15;
+export const COLS = 32;
+export const ROWS = 18;
 export const CANVAS_W = COLS * CELL;
 export const CANVAS_H = ROWS * CELL;
 
@@ -22,29 +22,48 @@ export interface LevelDef {
 
 export const LEVELS: LevelDef[] = [
   {
+    // Simple S-curve, gentle introduction. ~55 path cells.
     id: 1, name: 'OUTPOST', subtitle: 'Basic training',
-    startGold: 200, lives: 18, waves: 7, waveOffset: 0,
-    path: [[-1, 7], [8, 7], [8, 3], [16, 3], [16, 11], [25, 11]],
+    startGold: 150, lives: 15, waves: 7, waveOffset: 0,
+    path: [
+      [-1, 4], [8, 4], [8, 14], [16, 14], [16, 4], [24, 4], [24, 14], [33, 14],
+    ],
   },
   {
+    // Winding corridors with switchbacks. ~74 path cells.
     id: 2, name: 'CROSSROADS', subtitle: 'Winding corridors',
-    startGold: 225, lives: 16, waves: 7, waveOffset: 7,
-    path: [[-1, 2], [5, 2], [5, 6], [1, 6], [1, 10], [9, 10], [9, 6], [15, 6], [15, 12], [21, 12], [21, 2], [25, 2]],
+    startGold: 160, lives: 14, waves: 7, waveOffset: 7,
+    path: [
+      [-1, 3], [6, 3], [6, 8], [2, 8], [2, 14], [12, 14],
+      [12, 8], [18, 8], [18, 14], [24, 14], [24, 3], [29, 3], [29, 8], [33, 8],
+    ],
   },
   {
+    // Tight vertical zigzag lanes. ~99 path cells. Great for AoE/chain.
     id: 3, name: 'SERPENTINE', subtitle: 'Tight lanes',
-    startGold: 250, lives: 14, waves: 7, waveOffset: 14,
-    path: [[-1, 2], [4, 2], [4, 12], [8, 12], [8, 2], [12, 2], [12, 12], [16, 12], [16, 2], [20, 2], [20, 12], [25, 12]],
+    startGold: 175, lives: 12, waves: 7, waveOffset: 14,
+    path: [
+      [-1, 2], [5, 2], [5, 15], [10, 15], [10, 2],
+      [15, 2], [15, 15], [20, 15], [20, 2], [25, 2], [25, 15], [33, 15],
+    ],
   },
   {
+    // Inward spiral - very long, many tower spots in the center. ~140 path cells.
     id: 4, name: 'SPIRAL', subtitle: 'The long road',
-    startGold: 275, lives: 12, waves: 7, waveOffset: 21,
-    path: [[-1, 1], [22, 1], [22, 13], [2, 13], [2, 4], [19, 4], [19, 10], [6, 10], [6, 7], [25, 7]],
+    startGold: 185, lives: 10, waves: 7, waveOffset: 21,
+    path: [
+      [-1, 1], [29, 1], [29, 16], [3, 16], [3, 5],
+      [26, 5], [26, 12], [7, 12], [7, 8], [33, 8],
+    ],
   },
   {
+    // Complex weave with multiple pockets. ~93 path cells.
     id: 5, name: 'NEXUS', subtitle: 'Final stand',
-    startGold: 300, lives: 10, waves: 7, waveOffset: 28,
-    path: [[-1, 1], [6, 1], [6, 7], [1, 7], [1, 13], [11, 13], [11, 7], [17, 7], [17, 13], [22, 13], [22, 1], [25, 1]],
+    startGold: 200, lives: 8, waves: 7, waveOffset: 28,
+    path: [
+      [-1, 2], [8, 2], [8, 10], [2, 10], [2, 16], [14, 16],
+      [14, 6], [20, 6], [20, 16], [28, 16], [28, 2], [33, 2],
+    ],
   },
 ];
 
@@ -193,15 +212,15 @@ export function getFusionKey(a: string, b: string): string {
 }
 
 export const ENEMY_TYPES: Record<string, EnemyType> = {
-  scout:   { id: 'scout',   name: 'Scout',   hp: 50,  speed: 2.1, gold: 10, color: '#ff6644', size: 6,  shape: 'triangle', ability: 'none' },
-  drone:   { id: 'drone',   name: 'Drone',   hp: 110, speed: 1.5, gold: 14, color: '#ffaa00', size: 8,  shape: 'diamond',  ability: 'none' },
-  mech:    { id: 'mech',    name: 'Mech',    hp: 280, speed: 1.0, gold: 28, color: '#ff4488', size: 10, shape: 'hexagon',  ability: 'none' },
-  swarm:   { id: 'swarm',   name: 'Swarm',   hp: 28,  speed: 2.8, gold: 5,  color: '#ffff00', size: 5,  shape: 'circle',   ability: 'none' },
-  boss:    { id: 'boss',    name: 'Boss',    hp: 900, speed: 0.7, gold: 90, color: '#ff0044', size: 14, shape: 'octagon',  ability: 'none' },
+  scout:   { id: 'scout',   name: 'Scout',   hp: 50,  speed: 1.7, gold: 5,  color: '#ff6644', size: 6,  shape: 'triangle', ability: 'none' },
+  drone:   { id: 'drone',   name: 'Drone',   hp: 110, speed: 1.2, gold: 8,  color: '#ffaa00', size: 8,  shape: 'diamond',  ability: 'none' },
+  mech:    { id: 'mech',    name: 'Mech',    hp: 280, speed: 0.8, gold: 16, color: '#ff4488', size: 10, shape: 'hexagon',  ability: 'none' },
+  swarm:   { id: 'swarm',   name: 'Swarm',   hp: 28,  speed: 2.3, gold: 2,  color: '#ffff00', size: 5,  shape: 'circle',   ability: 'none' },
+  boss:    { id: 'boss',    name: 'Boss',    hp: 900, speed: 0.55, gold: 60, color: '#ff0044', size: 14, shape: 'octagon',  ability: 'none' },
   // Special enemies - introduced across levels
-  phantom: { id: 'phantom', name: 'Phantom', hp: 70,  speed: 1.8, gold: 16, color: '#aa66ff', size: 7,  shape: 'star',     ability: 'phase' },
-  splitter:{ id: 'splitter', name: 'Splitter',hp: 160, speed: 1.3, gold: 18, color: '#ff8844', size: 9,  shape: 'cross',    ability: 'split' },
-  necro:   { id: 'necro',   name: 'Necro',   hp: 200, speed: 1.1, gold: 30, color: '#44ff88', size: 9,  shape: 'star',     ability: 'necro' },
-  guardian: { id: 'guardian', name: 'Guardian',hp: 250, speed: 0.9, gold: 35, color: '#ffcc44', size: 11, shape: 'hexagon',  ability: 'shield' },
-  sprinter:{ id: 'sprinter', name: 'Sprinter',hp: 120, speed: 1.2, gold: 20, color: '#44ffcc', size: 7,  shape: 'triangle', ability: 'sprint' },
+  phantom: { id: 'phantom', name: 'Phantom', hp: 70,  speed: 1.5, gold: 8,  color: '#aa66ff', size: 7,  shape: 'star',     ability: 'phase' },
+  splitter:{ id: 'splitter', name: 'Splitter',hp: 160, speed: 1.1, gold: 10, color: '#ff8844', size: 9,  shape: 'cross',    ability: 'split' },
+  necro:   { id: 'necro',   name: 'Necro',   hp: 200, speed: 0.9, gold: 15, color: '#44ff88', size: 9,  shape: 'star',     ability: 'necro' },
+  guardian: { id: 'guardian', name: 'Guardian',hp: 250, speed: 0.75, gold: 18, color: '#ffcc44', size: 11, shape: 'hexagon',  ability: 'shield' },
+  sprinter:{ id: 'sprinter', name: 'Sprinter',hp: 120, speed: 1.0, gold: 10, color: '#44ffcc', size: 7,  shape: 'triangle', ability: 'sprint' },
 };

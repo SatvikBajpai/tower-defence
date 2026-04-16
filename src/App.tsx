@@ -58,7 +58,15 @@ export default function App() {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (screen !== 'game') return;
-      if (state.phase === 'gameover' || state.phase === 'level_complete') return;
+      if (e.key === 'Escape') {
+        state.paused = !state.paused;
+        state.selectedTowerType = null;
+        state.selectedTower = null;
+        forceUpdate();
+        return;
+      }
+
+      if (state.phase === 'gameover' || state.phase === 'level_complete' || state.paused) return;
 
       const towerKeys: Record<string, string> = { '1': 'pulse', '2': 'arc', '3': 'nova', '4': 'cryo' };
 
@@ -80,10 +88,6 @@ export default function App() {
           overchargeTower(state.selectedTower);
           forceUpdate();
         }
-      } else if (e.key === 'Escape') {
-        state.selectedTowerType = null;
-        state.selectedTower = null;
-        forceUpdate();
       }
     }
 
@@ -110,6 +114,22 @@ export default function App() {
       <Toolbar onStateChange={forceUpdate} />
       <GameOver onStateChange={handleBackToMenu} />
       <LevelComplete onStateChange={forceUpdate} onMenu={handleBackToMenu} />
+      {state.paused && (
+        <div className="overlay">
+          <div className="pause-panel">
+            <h1 className="pause-title">PAUSED</h1>
+            <div className="pause-actions">
+              <button className="pause-btn resume-btn" onClick={() => { state.paused = false; forceUpdate(); }}>
+                RESUME
+              </button>
+              <button className="pause-btn menu-btn" onClick={handleBackToMenu}>
+                LEVEL SELECT
+              </button>
+            </div>
+            <div className="pause-hint">Press ESC to resume</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
