@@ -7,23 +7,25 @@ export default function HUD() {
     ? state.waveEnemiesCleared / state.waveEnemiesTotal
     : 0;
 
-  const next = state.phase === 'waiting' ? getNextWavePreview() : null;
+  const canPreview = state.phase === 'waiting' && state.levelWave < state.levelWavesTotal;
+  const next = canPreview ? getNextWavePreview() : null;
 
   return (
     <div className="hud-wrapper">
       <div className="hud">
         <div className="hud-left">
           <div className="hud-item">
+            <span className="hud-label">LEVEL</span>
+            <span className="hud-value wave-value">{state.levelNum}</span>
+          </div>
+          <div className="hud-level-name">{state.levelName}</div>
+          <div className="hud-item">
             <span className="hud-label">WAVE</span>
-            <span className="hud-value wave-value">{state.waveNum || '-'}</span>
+            <span className="hud-value">{state.levelWave}/{state.levelWavesTotal}</span>
           </div>
           {isActive && state.waveName && (
             <div className="hud-wave-name">{state.waveName}</div>
           )}
-          <div className="hud-item">
-            <span className="hud-label">SCORE</span>
-            <span className="hud-value">{state.score}</span>
-          </div>
         </div>
 
         <div className="hud-center">
@@ -31,6 +33,10 @@ export default function HUD() {
         </div>
 
         <div className="hud-right">
+          <div className="hud-item">
+            <span className="hud-label">SCORE</span>
+            <span className="hud-value">{state.score}</span>
+          </div>
           <div className="hud-item">
             <span className="hud-label">GOLD</span>
             <span className="hud-value gold-value">{state.gold}</span>
@@ -50,14 +56,11 @@ export default function HUD() {
 
       {isActive && (
         <div className="wave-progress-bar">
-          <div
-            className="wave-progress-fill"
-            style={{ width: `${progress * 100}%` }}
-          />
+          <div className="wave-progress-fill" style={{ width: `${progress * 100}%` }} />
         </div>
       )}
 
-      {next && state.phase === 'waiting' && (
+      {next && (
         <div className="next-wave-bar">
           <span className="nw-label">NEXT:</span>
           <span className="nw-name">{next.name}</span>

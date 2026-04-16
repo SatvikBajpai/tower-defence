@@ -1,11 +1,12 @@
 import {
-  CELL, COLS, ROWS, STARTING_GOLD, STARTING_LIVES,
+  CELL, COLS, ROWS, LEVELS,
   SELL_RATIO, MAX_PARTICLES, TOWER_TYPES, ENEMY_TYPES,
   FUSION_TYPES, FUSION_MAP, getFusionKey,
   OVERCHARGE_DURATION, OVERCHARGE_COOLDOWN,
 } from './config';
-import { grid, canPlace, getPositionOnPath, totalPathLength } from './path';
+import { grid, canPlace, getPositionOnPath, totalPathLength, initPath } from './path';
 import { generateWave, peekNextWave } from './waves';
+import { invalidateBackground } from './renderer';
 import type {
   GameState, Tower, Enemy, Projectile, Particle,
   FloatingText, ArcEffect, Point,
@@ -14,9 +15,9 @@ import type {
 let nextId = 1;
 
 export const state: GameState = {
-  gold: STARTING_GOLD,
-  lives: STARTING_LIVES,
-  maxLives: STARTING_LIVES,
+  gold: LEVELS[0].startGold,
+  lives: LEVELS[0].lives,
+  maxLives: LEVELS[0].lives,
   waveNum: 0,
   waveName: '',
   phase: 'waiting',
@@ -26,6 +27,10 @@ export const state: GameState = {
   waveEnemiesTotal: 0,
   waveEnemiesCleared: 0,
   waveBonus: 0,
+  levelNum: 1,
+  levelWave: 0,
+  levelWavesTotal: LEVELS[0].waves,
+  levelName: LEVELS[0].name,
   selectedTowerType: null,
   selectedTower: null,
   mouseGrid: null,
@@ -84,6 +89,50 @@ function spawnParticleBurst(x: number, y: number, color: string, count: number, 
   }
 }
 
+// ---- LEVEL MANAGEMENT ----
+
+export function startLevel(levelNum: number) {
+  const level = LEVELS[levelNum - 1];
+  if (!level) return;
+
+  initPath(level.path);
+  invalidateBackground();
+
+  state.levelNum = levelNum;
+  state.levelName = level.name;
+  state.levelWave = 0;
+  state.levelWavesTotal = level.waves;
+  state.gold = level.startGold + (levelNum > 1 ? state.score : 0);
+  state.lives = level.lives;
+  state.maxLives = level.lives;
+  state.waveNum = level.waveOffset;
+  state.waveName = '';
+  state.phase = 'waiting';
+  state.selectedTowerType = null;
+  state.selectedTower = null;
+
+  towers.length = 0;
+  enemies.length = 0;
+  projectiles.length = 0;
+  particles.length = 0;
+  floatingTexts.length = 0;
+  arcEffects.length = 0;
+  spawnQueue.length = 0;
+}
+
+export function advanceLevel(): boolean {
+  const nextLvl = state.levelNum + 1;
+  if (nextLvl > LEVELS.length) return false;
+  startLevel(nextLvl);
+  return true;
+}
+
+export function hasNextLevel(): boolean {
+  return state.levelNum < LEVELS.length;
+}
+
+// ---- TOWER OPERATIONS ----
+
 export function placeTower(col: number, row: number, typeId: string): boolean {
   const type = TOWER_TYPES[typeId];
   if (!type || state.gold < type.cost || !canPlace(col, row)) return false;
@@ -93,8 +142,7 @@ export function placeTower(col: number, row: number, typeId: string): boolean {
 
   const tower: Tower = {
     id: nextId++,
-    type,
-    col, row,
+    type, col, row,
     x: col * CELL + CELL / 2,
     y: row * CELL + CELL / 2,
     level: 0,
@@ -114,7 +162,6 @@ export function placeTower(col: number, row: number, typeId: string): boolean {
 }
 
 export function upgradeTower(tower: Tower): boolean {
-  if (tower.type.fusion) return false;
   const nextLevel = tower.level + 1;
   if (nextLevel >= tower.type.levels.length) return false;
   const cost = tower.type.levels[nextLevel].upgradeCost ?? tower.type.cost;
@@ -204,14 +251,18 @@ export function overchargeTower(tower: Tower): boolean {
   return true;
 }
 
+// ---- WAVE / PREVIEW ----
+
 export function getNextWavePreview() {
   return peekNextWave(state.waveNum);
 }
 
 export function startWave(): boolean {
   if (state.phase !== 'waiting') return false;
+  if (state.levelWave >= state.levelWavesTotal) return false;
 
   state.waveNum++;
+  state.levelWave++;
   const wave = generateWave(state.waveNum);
   state.waveName = wave.name;
   state.waveBonus = wave.bonus;
@@ -245,33 +296,32 @@ export function startWave(): boolean {
   return true;
 }
 
+// ---- ENEMY ----
+
+function createEnemy(et: typeof ENEMY_TYPES[string], hp: number, speed: number, gold: number, distance: number): Enemy {
+  const shieldMax = et.ability === 'shield' ? Math.round(hp * 0.4) : 0;
+  const enemy: Enemy = {
+    id: nextId++, type: et,
+    hp, maxHp: hp, speed, baseSpeed: speed,
+    distance, x: 0, y: 0,
+    gold, alive: true,
+    slowTimer: 0, slowAmount: 0,
+    hitFlash: 0, spawnDelay: 0, angle: 0,
+    phaseTimer: et.ability === 'phase' ? 2 + Math.random() * 2 : 0,
+    phased: false,
+    shieldHp: shieldMax, shieldMax,
+    sprintReady: et.ability === 'sprint',
+    sprintTriggered: false,
+  };
+  const pos = getPositionOnPath(distance);
+  enemy.x = pos.x; enemy.y = pos.y; enemy.angle = pos.angle;
+  return enemy;
+}
+
 function spawnEnemy(data: typeof spawnQueue[0]) {
   const et = ENEMY_TYPES[data.type];
   if (!et) return;
-
-  const enemy: Enemy = {
-    id: nextId++,
-    type: et,
-    hp: data.hp,
-    maxHp: data.hp,
-    speed: data.speed,
-    baseSpeed: data.speed,
-    distance: 0,
-    x: 0, y: 0,
-    gold: data.gold,
-    alive: true,
-    slowTimer: 0,
-    slowAmount: 0,
-    hitFlash: 0,
-    spawnDelay: 0,
-    angle: 0,
-  };
-
-  const pos = getPositionOnPath(0);
-  enemy.x = pos.x;
-  enemy.y = pos.y;
-  enemy.angle = pos.angle;
-  enemies.push(enemy);
+  enemies.push(createEnemy(et, data.hp, data.speed, data.gold, 0));
 }
 
 function findTarget(tower: Tower): Enemy | null {
@@ -281,7 +331,7 @@ function findTarget(tower: Tower): Enemy | null {
   let bestDist = -1;
 
   for (const enemy of enemies) {
-    if (!enemy.alive) continue;
+    if (!enemy.alive || enemy.phased) continue;
     const d = dist(tower, enemy);
     if (d <= range && enemy.distance > bestDist) {
       best = enemy;
@@ -292,8 +342,35 @@ function findTarget(tower: Tower): Enemy | null {
 }
 
 function damageEnemy(enemy: Enemy, damage: number, tower?: Tower) {
-  enemy.hp -= damage;
+  if (enemy.phased) return;
+
+  let remaining = damage;
+
+  // Shield absorbs damage first
+  if (enemy.shieldHp > 0) {
+    const absorbed = Math.min(enemy.shieldHp, remaining);
+    enemy.shieldHp -= absorbed;
+    remaining -= absorbed;
+    if (enemy.shieldHp <= 0) {
+      spawnParticleBurst(enemy.x, enemy.y, '#ffcc44', 6, 40, 2);
+    }
+  }
+
+  enemy.hp -= remaining;
   enemy.hitFlash = 0.12;
+
+  // Sprint trigger: when below 40% HP, dash
+  if (enemy.sprintReady && !enemy.sprintTriggered && enemy.hp < enemy.maxHp * 0.4 && enemy.hp > 0) {
+    enemy.sprintTriggered = true;
+    enemy.sprintReady = false;
+    enemy.speed = enemy.baseSpeed * 4;
+    addFloatingText(enemy.x, enemy.y - 12, 'SPRINT!', enemy.type.color);
+    spawnParticleBurst(enemy.x, enemy.y, enemy.type.color, 8, 80, 2);
+    // Speed resets after 1.5s via slowTimer trick (handled in update)
+    setTimeout(() => {
+      if (enemy.alive) enemy.speed = enemy.baseSpeed;
+    }, 1500);
+  }
 
   if (enemy.hp <= 0 && enemy.alive) {
     enemy.alive = false;
@@ -309,13 +386,48 @@ function damageEnemy(enemy: Enemy, damage: number, tower?: Tower) {
     for (let i = 0; i < 5; i++) {
       addParticle({
         x: enemy.x, y: enemy.y,
-        vx: (Math.random() - 0.5) * 60,
-        vy: (Math.random() - 0.5) * 60,
-        life: 0.6 + Math.random() * 0.4,
-        color: '#ffffff',
-        size: 2 + Math.random() * 2,
-        type: 'spark',
+        vx: (Math.random() - 0.5) * 60, vy: (Math.random() - 0.5) * 60,
+        life: 0.6 + Math.random() * 0.4, color: '#ffffff',
+        size: 2 + Math.random() * 2, type: 'spark',
       });
+    }
+
+    // Splitter: spawn 2 smaller copies
+    if (enemy.type.ability === 'split') {
+      const splitType = ENEMY_TYPES['scout'];
+      for (let i = 0; i < 2; i++) {
+        const child = createEnemy(
+          splitType,
+          Math.round(enemy.maxHp * 0.3),
+          enemy.baseSpeed * 1.3,
+          Math.round(enemy.gold * 0.3),
+          enemy.distance + (i - 0.5) * CELL * 0.5,
+        );
+        enemies.push(child);
+        spawnParticleBurst(child.x, child.y, enemy.type.color, 6, 50, 2);
+      }
+    }
+
+    // Necro: resurrect up to 2 recently dead nearby enemies
+    if (enemy.type.ability === 'necro') {
+      let resCount = 0;
+      // Find dead enemies that were near this one (check recent deaths by spawning ghosts at this position)
+      const necroType = ENEMY_TYPES['swarm'];
+      for (let i = 0; i < 3; i++) {
+        const ghost = createEnemy(
+          necroType,
+          Math.round(enemy.maxHp * 0.2),
+          necroType.speed,
+          3,
+          enemy.distance - CELL * (0.5 + i * 0.3),
+        );
+        enemies.push(ghost);
+        resCount++;
+      }
+      if (resCount > 0) {
+        addFloatingText(enemy.x, enemy.y - 20, 'RESURRECT!', enemy.type.color);
+        spawnParticleBurst(enemy.x, enemy.y, '#44ff88', 16, 80, 3);
+      }
     }
   }
 }
@@ -325,11 +437,9 @@ function fireProjectile(tower: Tower, target: Enemy) {
   const isOC = tower.overchargeTime > 0;
   const dmgMult = isOC ? 1.5 : 1;
   const damage = Math.round(stats.damage * dmgMult);
-
   const hasChains = stats.chains != null;
 
   if (hasChains) {
-    // Arc-type behavior (instant chain hit)
     const chainTargets: Point[] = [{ x: target.x, y: target.y }];
     const hitIds = new Set<number>([target.id]);
     const chains = stats.chains!;
@@ -345,15 +455,9 @@ function fireProjectile(tower: Tower, target: Enemy) {
       const sr = stats.splashRadius! * CELL;
       for (const e of enemies) {
         if (!e.alive || e.id === target.id) continue;
-        if (dist(e, target) <= sr) {
-          damageEnemy(e, Math.round(damage * 0.5), tower);
-        }
+        if (dist(e, target) <= sr) damageEnemy(e, Math.round(damage * 0.5), tower);
       }
-      addParticle({
-        x: target.x, y: target.y, vx: 0, vy: 0,
-        life: 0.25, color: tower.type.color, size: 0,
-        type: 'ring', ringRadius: 5, ringMaxRadius: sr,
-      });
+      addParticle({ x: target.x, y: target.y, vx: 0, vy: 0, life: 0.25, color: tower.type.color, size: 0, type: 'ring', ringRadius: 5, ringMaxRadius: sr });
     }
 
     let current: Enemy = target;
@@ -363,16 +467,12 @@ function fireProjectile(tower: Tower, target: Enemy) {
       for (const e of enemies) {
         if (!e.alive || hitIds.has(e.id)) continue;
         const d = dist(current, e);
-        if (d < closestDist) {
-          closest = e;
-          closestDist = d;
-        }
+        if (d < closestDist) { closest = e; closestDist = d; }
       }
       if (!closest) break;
       hitIds.add(closest.id);
       chainTargets.push({ x: closest.x, y: closest.y });
       damageEnemy(closest, Math.round(damage * 0.7), tower);
-
       if (hasSlow) {
         closest.slowTimer = (stats.slowDuration ?? 2000) / 1000;
         closest.slowAmount = stats.slowAmount!;
@@ -381,44 +481,29 @@ function fireProjectile(tower: Tower, target: Enemy) {
         const sr = stats.splashRadius! * CELL;
         for (const e of enemies) {
           if (!e.alive || hitIds.has(e.id)) continue;
-          if (dist(e, closest!) <= sr) {
-            damageEnemy(e, Math.round(damage * 0.3), tower);
-          }
+          if (dist(e, closest!) <= sr) damageEnemy(e, Math.round(damage * 0.3), tower);
         }
-        addParticle({
-          x: closest.x, y: closest.y, vx: 0, vy: 0,
-          life: 0.2, color: tower.type.color, size: 0,
-          type: 'ring', ringRadius: 5, ringMaxRadius: sr,
-        });
+        addParticle({ x: closest.x, y: closest.y, vx: 0, vy: 0, life: 0.2, color: tower.type.color, size: 0, type: 'ring', ringRadius: 5, ringMaxRadius: sr });
       }
       current = closest;
     }
 
     arcEffects.push({
       targets: [{ x: tower.x, y: tower.y }, ...chainTargets],
-      color: tower.type.color,
-      timer: 0.25,
-      maxTimer: 0.25,
-      damage,
+      color: tower.type.color, timer: 0.25, maxTimer: 0.25, damage,
     });
-
-    for (const pt of chainTargets) {
-      spawnParticleBurst(pt.x, pt.y, tower.type.color, 6, 50, 2);
-    }
+    for (const pt of chainTargets) spawnParticleBurst(pt.x, pt.y, tower.type.color, 6, 50, 2);
   } else {
-    // Projectile-type behavior
     projectiles.push({
       x: tower.x, y: tower.y,
-      targetId: target.id,
-      damage,
+      targetId: target.id, damage,
       speed: (stats.projSpeed ?? 6) * CELL,
       color: tower.type.color,
       type: tower.type.id,
       splashRadius: stats.splashRadius ? stats.splashRadius * CELL : undefined,
       slowAmount: stats.slowAmount,
       slowDuration: stats.slowDuration,
-      trail: [],
-      alive: true,
+      trail: [], alive: true,
     });
   }
 
@@ -426,12 +511,14 @@ function fireProjectile(tower: Tower, target: Enemy) {
   spawnParticleBurst(tower.x, tower.y, tower.type.color, 4, 40, 2);
 }
 
+// ---- MAIN UPDATE ----
+
 export function update(dt: number): void {
-  if (state.phase === 'gameover') return;
+  if (state.phase === 'gameover' || state.phase === 'level_complete') return;
 
   const gameDt = dt * state.speed;
 
-  // Spawn enemies
+  // Spawn
   if (state.phase === 'spawning' && spawnQueue.length > 0) {
     spawnTimer -= gameDt * 1000;
     while (spawnTimer <= 0 && spawnQueue.length > 0) {
@@ -439,33 +526,48 @@ export function update(dt: number): void {
       spawnEnemy(next);
       spawnTimer += next.delay;
     }
-    if (spawnQueue.length === 0) {
-      state.phase = 'active';
-    }
+    if (spawnQueue.length === 0) state.phase = 'active';
   }
 
-  // Update enemies
+  // Enemies
   for (let i = enemies.length - 1; i >= 0; i--) {
     const enemy = enemies[i];
-    if (!enemy.alive) {
-      enemies.splice(i, 1);
-      continue;
+    if (!enemy.alive) { enemies.splice(i, 1); continue; }
+
+    // Phantom phase ability
+    if (enemy.type.ability === 'phase') {
+      enemy.phaseTimer -= gameDt;
+      if (enemy.phaseTimer <= 0) {
+        enemy.phased = !enemy.phased;
+        enemy.phaseTimer = enemy.phased ? 1.5 : (2 + Math.random() * 2);
+        if (enemy.phased) {
+          spawnParticleBurst(enemy.x, enemy.y, enemy.type.color, 6, 30, 2);
+        }
+      }
+    }
+
+    // Guardian shield regen aura - recharges shields of nearby enemies
+    if (enemy.type.ability === 'shield') {
+      for (const other of enemies) {
+        if (other === enemy || !other.alive) continue;
+        if (other.shieldMax > 0 && other.shieldHp < other.shieldMax) {
+          const d = dist(enemy, other);
+          if (d < CELL * 3) {
+            other.shieldHp = Math.min(other.shieldMax, other.shieldHp + 8 * gameDt);
+          }
+        }
+      }
     }
 
     if (enemy.slowTimer > 0) {
       enemy.slowTimer -= gameDt;
       enemy.speed = enemy.baseSpeed * (1 - enemy.slowAmount);
-      if (enemy.slowTimer <= 0) {
-        enemy.speed = enemy.baseSpeed;
-      }
+      if (enemy.slowTimer <= 0 && !enemy.sprintTriggered) enemy.speed = enemy.baseSpeed;
     }
 
     enemy.distance += enemy.speed * CELL * gameDt;
     const pos = getPositionOnPath(enemy.distance);
-    enemy.x = pos.x;
-    enemy.y = pos.y;
-    enemy.angle = pos.angle;
-
+    enemy.x = pos.x; enemy.y = pos.y; enemy.angle = pos.angle;
     if (enemy.hitFlash > 0) enemy.hitFlash -= gameDt;
 
     if (enemy.distance >= totalPathLength) {
@@ -474,47 +576,32 @@ export function update(dt: number): void {
       state.waveEnemiesCleared++;
       enemies.splice(i, 1);
       spawnParticleBurst(pos.x, pos.y, '#ff0000', 8, 60, 3);
-
-      if (state.lives <= 0) {
-        state.lives = 0;
-        state.phase = 'gameover';
-        return;
-      }
+      if (state.lives <= 0) { state.lives = 0; state.phase = 'gameover'; return; }
     }
   }
 
-  // Check wave complete
+  // Wave complete check
   if (state.phase === 'active' && enemies.length === 0 && spawnQueue.length === 0) {
-    state.phase = 'waiting';
     state.gold += state.waveBonus;
-    addFloatingText(
-      COLS * CELL / 2, ROWS * CELL / 2 - 30,
-      `WAVE ${state.waveNum} COMPLETE! +${state.waveBonus}g`,
-      '#00ffff',
-    );
+    addFloatingText(COLS * CELL / 2, ROWS * CELL / 2 - 30, `+${state.waveBonus}g`, '#00ffff');
+
+    if (state.levelWave >= state.levelWavesTotal) {
+      state.phase = 'level_complete';
+    } else {
+      state.phase = 'waiting';
+    }
   }
 
-  // Update towers
+  // Towers
   const now = performance.now();
   for (const tower of towers) {
     const stats = tower.type.levels[tower.level];
 
-    // Overcharge timer
     if (tower.overchargeTime > 0) {
       tower.overchargeTime -= gameDt;
-      // Overcharge particles
       if (Math.random() < 0.3) {
         const a = Math.random() * Math.PI * 2;
-        addParticle({
-          x: tower.x + Math.cos(a) * 12,
-          y: tower.y + Math.sin(a) * 12,
-          vx: Math.cos(a) * 30,
-          vy: Math.sin(a) * 30,
-          life: 0.3,
-          color: '#ffffff',
-          size: 2,
-          type: 'spark',
-        });
+        addParticle({ x: tower.x + Math.cos(a) * 12, y: tower.y + Math.sin(a) * 12, vx: Math.cos(a) * 30, vy: Math.sin(a) * 30, life: 0.3, color: '#ffffff', size: 2, type: 'spark' });
       }
       if (tower.overchargeTime <= 0) {
         tower.overchargeTime = -OVERCHARGE_COOLDOWN;
@@ -528,19 +615,11 @@ export function update(dt: number): void {
       }
     }
 
-    // Can't fire during cooldown
-    if (tower.overchargeTime < 0) {
-      tower.target = null;
-      continue;
-    }
+    if (tower.overchargeTime < 0) { tower.target = null; continue; }
 
     tower.target = findTarget(tower);
-
-    if (tower.target) {
-      tower.targetRotation = angleTo(tower, tower.target);
-    }
+    if (tower.target) tower.targetRotation = angleTo(tower, tower.target);
     tower.rotation = lerpAngle(tower.rotation, tower.targetRotation, 8 * gameDt);
-
     if (tower.pulseAnim > 0) tower.pulseAnim -= gameDt * 3;
 
     const isOC = tower.overchargeTime > 0;
@@ -552,20 +631,13 @@ export function update(dt: number): void {
     }
   }
 
-  // Update projectiles
+  // Projectiles
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const proj = projectiles[i];
-    if (!proj.alive) {
-      projectiles.splice(i, 1);
-      continue;
-    }
+    if (!proj.alive) { projectiles.splice(i, 1); continue; }
 
     const target = enemies.find(e => e.id === proj.targetId && e.alive);
-    if (!target) {
-      proj.alive = false;
-      projectiles.splice(i, 1);
-      continue;
-    }
+    if (!target) { proj.alive = false; projectiles.splice(i, 1); continue; }
 
     proj.trail.push({ x: proj.x, y: proj.y });
     if (proj.trail.length > 8) proj.trail.shift();
@@ -576,23 +648,13 @@ export function update(dt: number): void {
 
     if (dist(proj, target) < 8) {
       proj.alive = false;
-
       if (proj.splashRadius) {
-        addParticle({
-          x: target.x, y: target.y, vx: 0, vy: 0,
-          life: 0.35, color: proj.color, size: 0,
-          type: 'ring', ringRadius: 5, ringMaxRadius: proj.splashRadius,
-        });
-
+        addParticle({ x: target.x, y: target.y, vx: 0, vy: 0, life: 0.35, color: proj.color, size: 0, type: 'ring', ringRadius: 5, ringMaxRadius: proj.splashRadius });
         for (const enemy of enemies) {
           if (!enemy.alive) continue;
           if (dist(enemy, target) <= proj.splashRadius) {
-            const falloff = 1 - dist(enemy, target) / proj.splashRadius * 0.4;
-            damageEnemy(enemy, Math.round(proj.damage * falloff));
-            if (proj.slowAmount) {
-              enemy.slowTimer = (proj.slowDuration ?? 2000) / 1000;
-              enemy.slowAmount = proj.slowAmount;
-            }
+            damageEnemy(enemy, Math.round(proj.damage * (1 - dist(enemy, target) / proj.splashRadius * 0.4)));
+            if (proj.slowAmount) { enemy.slowTimer = (proj.slowDuration ?? 2000) / 1000; enemy.slowAmount = proj.slowAmount; }
           }
         }
         spawnParticleBurst(target.x, target.y, proj.color, 12, 80, 3);
@@ -605,36 +667,31 @@ export function update(dt: number): void {
         damageEnemy(target, proj.damage);
         spawnParticleBurst(target.x, target.y, proj.color, 6, 50, 2);
       }
-
       projectiles.splice(i, 1);
     }
   }
 
-  // Update arc effects
+  // Arc effects
   for (let i = arcEffects.length - 1; i >= 0; i--) {
     arcEffects[i].timer -= gameDt;
     if (arcEffects[i].timer <= 0) arcEffects.splice(i, 1);
   }
 
-  // Update particles
+  // Particles
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
     p.life -= gameDt;
-    if (p.life <= 0) {
-      particles.splice(i, 1);
-      continue;
-    }
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
     p.x += p.vx * gameDt;
     p.y += p.vy * gameDt;
     p.vx *= 0.96;
     p.vy *= 0.96;
     if (p.type === 'ring' && p.ringRadius != null && p.ringMaxRadius != null) {
-      const t = 1 - p.life / p.maxLife;
-      p.ringRadius = 5 + (p.ringMaxRadius - 5) * t;
+      p.ringRadius = 5 + (p.ringMaxRadius - 5) * (1 - p.life / p.maxLife);
     }
   }
 
-  // Update floating texts
+  // Floating texts
   for (let i = floatingTexts.length - 1; i >= 0; i--) {
     const ft = floatingTexts[i];
     ft.life -= gameDt * 1.5;
@@ -644,31 +701,8 @@ export function update(dt: number): void {
 }
 
 export function resetGame(): void {
-  state.gold = STARTING_GOLD;
-  state.lives = STARTING_LIVES;
-  state.waveNum = 0;
-  state.waveName = '';
-  state.phase = 'waiting';
-  state.speed = 1;
   state.score = 0;
   state.enemiesKilled = 0;
-  state.waveEnemiesTotal = 0;
-  state.waveEnemiesCleared = 0;
-  state.waveBonus = 0;
-  state.selectedTowerType = null;
-  state.selectedTower = null;
-
-  towers.length = 0;
-  enemies.length = 0;
-  projectiles.length = 0;
-  particles.length = 0;
-  floatingTexts.length = 0;
-  arcEffects.length = 0;
-  spawnQueue.length = 0;
-
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      if (grid[r][c] === 2) grid[r][c] = 0;
-    }
-  }
+  state.speed = 1;
+  startLevel(1);
 }

@@ -46,6 +46,8 @@ export interface Tower {
   overchargeTime: number;
 }
 
+export type EnemyAbility = 'none' | 'phase' | 'split' | 'necro' | 'shield' | 'sprint';
+
 export interface EnemyType {
   id: string;
   name: string;
@@ -54,7 +56,8 @@ export interface EnemyType {
   gold: number;
   color: string;
   size: number;
-  shape: 'triangle' | 'diamond' | 'hexagon' | 'circle' | 'octagon';
+  shape: 'triangle' | 'diamond' | 'hexagon' | 'circle' | 'octagon' | 'star' | 'cross';
+  ability: EnemyAbility;
 }
 
 export interface Enemy {
@@ -74,6 +77,12 @@ export interface Enemy {
   hitFlash: number;
   spawnDelay: number;
   angle: number;
+  phaseTimer: number;
+  phased: boolean;
+  shieldHp: number;
+  shieldMax: number;
+  sprintReady: boolean;
+  sprintTriggered: boolean;
 }
 
 export interface Projectile {
@@ -145,13 +154,17 @@ export interface GameState {
   maxLives: number;
   waveNum: number;
   waveName: string;
-  phase: 'waiting' | 'spawning' | 'active' | 'gameover';
+  phase: 'waiting' | 'spawning' | 'active' | 'gameover' | 'level_complete';
   speed: number;
   score: number;
   enemiesKilled: number;
   waveEnemiesTotal: number;
   waveEnemiesCleared: number;
   waveBonus: number;
+  levelNum: number;
+  levelWave: number;
+  levelWavesTotal: number;
+  levelName: string;
   selectedTowerType: string | null;
   selectedTower: Tower | null;
   mouseGrid: Point | null;

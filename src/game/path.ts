@@ -1,15 +1,26 @@
-import { CELL, COLS, ROWS, PATH_GRID } from './config';
+import { CELL, COLS, ROWS, LEVELS } from './config';
 import type { PathSegment, Point, CellState } from './types';
 
 export const pathCells = new Set<string>();
-export const grid: CellState[][] = Array.from({ length: ROWS }, () =>
-  Array(COLS).fill(0) as CellState[]
-);
+export const grid: CellState[][] = [];
+export const pathWaypoints: Point[] = [];
+export const pathSegments: PathSegment[] = [];
+export let totalPathLength = 0;
 
-function markPathCells() {
-  for (let i = 0; i < PATH_GRID.length - 1; i++) {
-    const [c1, r1] = PATH_GRID[i];
-    const [c2, r2] = PATH_GRID[i + 1];
+export function initPath(pathGrid: [number, number][]) {
+  pathCells.clear();
+  grid.length = 0;
+  for (let r = 0; r < ROWS; r++) {
+    grid.push(Array(COLS).fill(0) as CellState[]);
+  }
+  pathWaypoints.length = 0;
+  pathSegments.length = 0;
+  totalPathLength = 0;
+
+  // Mark path cells
+  for (let i = 0; i < pathGrid.length - 1; i++) {
+    const [c1, r1] = pathGrid[i];
+    const [c2, r2] = pathGrid[i + 1];
     if (r1 === r2) {
       const minC = Math.min(c1, c2);
       const maxC = Math.max(c1, c2);
@@ -30,19 +41,16 @@ function markPathCells() {
       }
     }
   }
-}
 
-markPathCells();
+  // Compute waypoints in pixel coords
+  for (const [c, r] of pathGrid) {
+    pathWaypoints.push({
+      x: c * CELL + CELL / 2,
+      y: r * CELL + CELL / 2,
+    });
+  }
 
-export const pathWaypoints: Point[] = PATH_GRID.map(([c, r]) => ({
-  x: c * CELL + CELL / 2,
-  y: r * CELL + CELL / 2,
-}));
-
-export const pathSegments: PathSegment[] = [];
-export let totalPathLength = 0;
-
-function computeSegments() {
+  // Compute segments
   let cumLen = 0;
   for (let i = 0; i < pathWaypoints.length - 1; i++) {
     const p1 = pathWaypoints[i];
@@ -56,7 +64,8 @@ function computeSegments() {
   totalPathLength = cumLen;
 }
 
-computeSegments();
+// Initialize with level 1
+initPath(LEVELS[0].path);
 
 export function getPositionOnPath(distance: number): Point & { angle: number } {
   let remaining = distance;

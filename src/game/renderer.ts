@@ -158,12 +158,16 @@ function drawTower(ctx: CanvasRenderingContext2D, tower: Tower, time: number) {
   const isFusion = !!type.fusion;
   const isOC = overchargeTime > 0;
   const isCooldown = overchargeTime < 0;
-  const r = isFusion ? CELL * 0.42 : CELL * 0.38;
+  // Tower grows with level
+  const levelScale = 1 + level * 0.08;
+  const baseR = isFusion ? CELL * 0.42 : CELL * 0.38;
+  const r = baseR * levelScale;
   const isSelected = state.selectedTower === tower;
+  const glowIntensity = 8 + level * 4;
+  const borderWidth = 1.5 + level * 0.5;
 
   ctx.save();
 
-  // Dim during cooldown
   if (isCooldown) ctx.globalAlpha = 0.45;
 
   // Range indicator
@@ -178,6 +182,34 @@ function drawTower(ctx: CanvasRenderingContext2D, tower: Tower, time: number) {
     ctx.setLineDash([4, 4]);
     ctx.stroke();
     ctx.setLineDash([]);
+  }
+
+  // Level 2+ ambient glow ring
+  if (level >= 1) {
+    ctx.save();
+    ctx.globalAlpha = 0.08 + level * 0.06;
+    ctx.shadowColor = type.color;
+    ctx.shadowBlur = 15 + level * 5;
+    ctx.beginPath();
+    ctx.arc(x, y, r + 3 + level * 2, 0, Math.PI * 2);
+    ctx.fillStyle = type.color;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Level 3 orbiting particles
+  if (level >= 2) {
+    ctx.save();
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = type.color;
+    const orbitR = r + 6;
+    for (let i = 0; i < 3; i++) {
+      const a = time * 0.003 + (Math.PI * 2 * i) / 3;
+      ctx.beginPath();
+      ctx.arc(x + Math.cos(a) * orbitR, y + Math.sin(a) * orbitR, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   // Overcharge glow
@@ -209,98 +241,206 @@ function drawTower(ctx: CanvasRenderingContext2D, tower: Tower, time: number) {
 
   // Base shape
   ctx.shadowColor = isOC ? '#ffffff' : type.color;
-  ctx.shadowBlur = isOC ? 14 : 8;
+  ctx.shadowBlur = isOC ? 14 : glowIntensity;
 
   if (isFusion) {
-    // Fusion towers: double hex with inner star
+    // Fusion outer hex
     hexPath(ctx, x, y, r);
     ctx.fillStyle = type.colorDark;
     ctx.fill();
     ctx.strokeStyle = type.color;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = borderWidth;
     ctx.stroke();
     ctx.shadowBlur = 0;
+
+    // Level 2+ fusion: double border
+    if (level >= 1) {
+      hexPath(ctx, x, y, r * 0.85);
+      ctx.strokeStyle = `${type.color}30`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
 
     // Inner rotating ring
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(time * 0.001);
     hexPath(ctx, 0, 0, r * 0.6);
-    ctx.strokeStyle = `${type.color}50`;
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = `${type.color}${level >= 2 ? '80' : '50'}`;
+    ctx.lineWidth = level >= 2 ? 1.5 : 1;
     ctx.stroke();
     ctx.restore();
 
-    // Center diamond
+    // Level 3 fusion: second counter-rotating ring
+    if (level >= 2) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(-time * 0.0015);
+      hexPath(ctx, 0, 0, r * 0.45);
+      ctx.strokeStyle = `${type.color}40`;
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Center diamond + barrel
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(rotation);
-    diamondPath(ctx, 0, 0, r * 0.3);
+    const dSize = r * (0.3 + level * 0.04);
+    diamondPath(ctx, 0, 0, dSize);
     ctx.fillStyle = type.color;
     ctx.fill();
-    // Barrel
-    ctx.fillRect(r * 0.2, -2.5, r * 0.7, 5);
+    const barrelW = 5 + level * 1.5;
+    ctx.fillRect(r * 0.2, -barrelW / 2, r * 0.7, barrelW);
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(r * 0.85, 0, 2, 0, Math.PI * 2);
+    ctx.arc(r * 0.85, 0, 2 + level * 0.5, 0, Math.PI * 2);
     ctx.fill();
+    // Level 2+ muzzle flare shape
+    if (level >= 1) {
+      ctx.fillStyle = `${type.color}60`;
+      ctx.beginPath();
+      ctx.moveTo(r * 0.9, -3 - level);
+      ctx.lineTo(r * 1.05, 0);
+      ctx.lineTo(r * 0.9, 3 + level);
+      ctx.closePath();
+      ctx.fill();
+    }
     ctx.restore();
 
-    // Fusion label
-    ctx.save();
-    ctx.fillStyle = type.color;
-    ctx.beginPath();
-    ctx.arc(x, y + r + 5, 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    // Level pips
+    for (let i = 0; i <= level; i++) {
+      ctx.fillStyle = type.color;
+      ctx.beginPath();
+      ctx.arc(x - 6 + i * 6, y + r + 6, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
   } else {
-    // Normal tower
+    // ---- NORMAL TOWERS (level-dependent visuals) ----
+
+    // Outer hex
     hexPath(ctx, x, y, r);
     ctx.fillStyle = type.colorDark;
     ctx.fill();
     ctx.strokeStyle = type.color;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = borderWidth;
     ctx.stroke();
     ctx.shadowBlur = 0;
 
+    // Level 2+: second inner hex ring
+    if (level >= 1) {
+      hexPath(ctx, x, y, r * 0.78);
+      ctx.strokeStyle = `${type.color}25`;
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
+
+    // Inner detail hex
     hexPath(ctx, x, y, r * 0.55);
-    ctx.fillStyle = `${type.color}15`;
+    ctx.fillStyle = `${type.color}${level >= 2 ? '25' : '15'}`;
     ctx.fill();
-    ctx.strokeStyle = `${type.color}40`;
-    ctx.lineWidth = 0.5;
+    ctx.strokeStyle = `${type.color}${level >= 1 ? '60' : '40'}`;
+    ctx.lineWidth = 0.5 + level * 0.3;
     ctx.stroke();
 
-    // Turret
+    // Level 3: core glow
+    if (level >= 2) {
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, r * 0.4);
+      grad.addColorStop(0, `${type.color}20`);
+      grad.addColorStop(1, `${type.color}00`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, r * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Turret - scales with level
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(rotation);
     ctx.fillStyle = type.color;
 
     if (type.id === 'arc') {
+      // Lightning bolt - bigger at higher levels
+      const w = 3 + level * 1.5;
       ctx.beginPath();
-      ctx.moveTo(r * 0.1, -3);
-      ctx.lineTo(r * 0.8, -1);
+      ctx.moveTo(r * 0.1, -w);
+      ctx.lineTo(r * 0.85, -w * 0.3);
       ctx.lineTo(r * 0.4, 0);
-      ctx.lineTo(r * 0.8, 1);
-      ctx.lineTo(r * 0.1, 3);
+      ctx.lineTo(r * 0.85, w * 0.3);
+      ctx.lineTo(r * 0.1, w);
       ctx.lineTo(r * 0.3, 0);
       ctx.closePath();
       ctx.fill();
+      // Level 2+: secondary prongs
+      if (level >= 1) {
+        ctx.fillStyle = `${type.color}88`;
+        ctx.fillRect(r * 0.3, -w - 1.5, r * 0.3, 1.5);
+        ctx.fillRect(r * 0.3, w, r * 0.3, 1.5);
+      }
     } else if (type.id === 'nova') {
-      ctx.fillRect(r * 0.15, -4, r * 0.7, 2.5);
-      ctx.fillRect(r * 0.15, 1.5, r * 0.7, 2.5);
+      // Double barrel - wider at higher levels
+      const bw = 2.5 + level * 0.8;
+      const gap = 1.5 + level * 0.5;
+      ctx.fillRect(r * 0.15, -(gap + bw), r * 0.7, bw);
+      ctx.fillRect(r * 0.15, gap, r * 0.7, bw);
+      // Level 2+: center rail
+      if (level >= 1) {
+        ctx.fillStyle = `${type.color}66`;
+        ctx.fillRect(r * 0.25, -1, r * 0.55, 2);
+      }
+      // Level 3: muzzle caps
+      if (level >= 2) {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(r * 0.85, -(gap + bw / 2), 1.5, 0, Math.PI * 2);
+        ctx.arc(r * 0.85, gap + bw / 2, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
     } else if (type.id === 'cryo') {
+      // Crystal - more facets at higher levels
+      const w = 4 + level * 1.5;
       ctx.beginPath();
-      ctx.moveTo(r * 0.8, 0);
-      ctx.lineTo(r * 0.3, -4);
+      ctx.moveTo(r * 0.85, 0);
+      ctx.lineTo(r * 0.3, -w);
       ctx.lineTo(r * 0.15, 0);
-      ctx.lineTo(r * 0.3, 4);
+      ctx.lineTo(r * 0.3, w);
       ctx.closePath();
       ctx.fill();
+      // Level 2+: side crystals
+      if (level >= 1) {
+        ctx.fillStyle = `${type.color}77`;
+        ctx.beginPath();
+        ctx.moveTo(r * 0.65, -w * 0.3);
+        ctx.lineTo(r * 0.45, -w - 2);
+        ctx.lineTo(r * 0.25, -w * 0.3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(r * 0.65, w * 0.3);
+        ctx.lineTo(r * 0.45, w + 2);
+        ctx.lineTo(r * 0.25, w * 0.3);
+        ctx.closePath();
+        ctx.fill();
+      }
     } else {
-      ctx.fillRect(r * 0.15, -2, r * 0.75, 4);
+      // Pulse - single barrel, thicker at higher levels
+      const bw = 4 + level * 2;
+      ctx.fillRect(r * 0.15, -bw / 2, r * 0.75, bw);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(r * 0.8, -1.5, 3, 3);
+      const tipR = 1.5 + level * 0.8;
+      ctx.beginPath();
+      ctx.arc(r * 0.85, 0, tipR, 0, Math.PI * 2);
+      ctx.fill();
+      // Level 2+: heat vents
+      if (level >= 1) {
+        ctx.fillStyle = `${type.color}55`;
+        ctx.fillRect(r * 0.3, -bw / 2 - 2, r * 0.15, 2);
+        ctx.fillRect(r * 0.5, -bw / 2 - 2, r * 0.15, 2);
+        ctx.fillRect(r * 0.3, bw / 2, r * 0.15, 2);
+        ctx.fillRect(r * 0.5, bw / 2, r * 0.15, 2);
+      }
     }
     ctx.restore();
 
@@ -332,18 +472,95 @@ function drawTower(ctx: CanvasRenderingContext2D, tower: Tower, time: number) {
   ctx.restore();
 }
 
-function drawEnemy(ctx: CanvasRenderingContext2D, enemy: Enemy) {
+function starPath(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, points: number = 5) {
+  ctx.beginPath();
+  for (let i = 0; i < points * 2; i++) {
+    const angle = (Math.PI * i) / points - Math.PI / 2;
+    const rad = i % 2 === 0 ? r : r * 0.45;
+    const px = x + rad * Math.cos(angle);
+    const py = y + rad * Math.sin(angle);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
+function crossPath(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
+  const w = r * 0.4;
+  ctx.beginPath();
+  ctx.moveTo(x - w, y - r);
+  ctx.lineTo(x + w, y - r);
+  ctx.lineTo(x + w, y - w);
+  ctx.lineTo(x + r, y - w);
+  ctx.lineTo(x + r, y + w);
+  ctx.lineTo(x + w, y + w);
+  ctx.lineTo(x + w, y + r);
+  ctx.lineTo(x - w, y + r);
+  ctx.lineTo(x - w, y + w);
+  ctx.lineTo(x - r, y + w);
+  ctx.lineTo(x - r, y - w);
+  ctx.lineTo(x - w, y - w);
+  ctx.closePath();
+}
+
+function drawEnemy(ctx: CanvasRenderingContext2D, enemy: Enemy, time: number) {
   const { x, y, type, hp, maxHp, hitFlash, angle } = enemy;
-  const s = type.size;
-  const fillColor = hitFlash > 0 ? '#ffffff' : type.color;
+  // Scale size slightly with HP (late-game enemies feel bigger)
+  const hpScale = Math.min(1.4, 1 + Math.log2(Math.max(1, maxHp / (type.hp || 1))) * 0.08);
+  const s = type.size * hpScale;
+  const isBoss = type.id === 'boss';
+  // Boss tier based on max HP: <1500 = tier 0, <3000 = tier 1, <5000 = tier 2, else tier 3
+  const bossTier = isBoss ? (maxHp < 1500 ? 0 : maxHp < 3000 ? 1 : maxHp < 5000 ? 2 : 3) : 0;
 
   ctx.save();
-  ctx.shadowColor = hitFlash > 0 ? '#ffffff' : type.color;
-  ctx.shadowBlur = hitFlash > 0 ? 12 : 6;
 
+  // Phased enemies are translucent
+  if (enemy.phased) {
+    ctx.globalAlpha = 0.25 + 0.1 * Math.sin(time * 0.008);
+  }
+
+  // Boss pulsing aura
+  if (isBoss) {
+    ctx.save();
+    const pulseA = 0.12 + bossTier * 0.06 + 0.06 * Math.sin(time * 0.003);
+    ctx.globalAlpha = pulseA;
+    ctx.shadowColor = type.color;
+    ctx.shadowBlur = 20 + bossTier * 8;
+    ctx.beginPath();
+    ctx.arc(x, y, s + 6 + bossTier * 3, 0, Math.PI * 2);
+    ctx.fillStyle = type.color;
+    ctx.fill();
+    ctx.restore();
+
+    // Boss orbiting shards (tier 1+)
+    if (bossTier >= 1) {
+      ctx.save();
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = type.color;
+      const shardCount = 2 + bossTier;
+      const orbitR = s + 5 + bossTier * 2;
+      for (let i = 0; i < shardCount; i++) {
+        const a = time * 0.004 + (Math.PI * 2 * i) / shardCount;
+        const sx = x + Math.cos(a) * orbitR;
+        const sy = y + Math.sin(a) * orbitR;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - 2);
+        ctx.lineTo(sx + 1.5, sy);
+        ctx.lineTo(sx, sy + 2);
+        ctx.lineTo(sx - 1.5, sy);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  const fillColor = hitFlash > 0 ? '#ffffff' : type.color;
+  ctx.shadowColor = hitFlash > 0 ? '#ffffff' : type.color;
+  ctx.shadowBlur = hitFlash > 0 ? 12 : (isBoss ? 10 + bossTier * 4 : 6);
   ctx.fillStyle = fillColor;
   ctx.strokeStyle = type.color;
-  ctx.lineWidth = 1;
+  ctx.lineWidth = isBoss ? 1.5 + bossTier * 0.5 : 1;
 
   switch (type.shape) {
     case 'triangle':
@@ -368,14 +585,84 @@ function drawEnemy(ctx: CanvasRenderingContext2D, enemy: Enemy) {
       hexPath(ctx, x, y, s);
       ctx.fill();
       ctx.stroke();
+      // Guardian shield aura ring
+      if (type.ability === 'shield') {
+        ctx.save();
+        ctx.globalAlpha = 0.3 + 0.1 * Math.sin(time * 0.004);
+        ctx.strokeStyle = '#ffcc44';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.arc(x, y, CELL * 3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
       break;
-    case 'octagon':
+    case 'octagon': {
+      // Boss drawing - scales with tier
       octPath(ctx, x, y, s);
       ctx.fill();
       ctx.stroke();
+
+      // Inner ring
       ctx.beginPath();
-      ctx.arc(x, y, s * 0.5, 0, Math.PI * 2);
+      ctx.arc(x, y, s * 0.55, 0, Math.PI * 2);
       ctx.strokeStyle = `${type.color}88`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Tier 1+: second inner octagon
+      if (bossTier >= 1) {
+        ctx.shadowBlur = 0;
+        octPath(ctx, x, y, s * 0.7);
+        ctx.strokeStyle = `${type.color}44`;
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      }
+
+      // Tier 2+: inner cross pattern
+      if (bossTier >= 2) {
+        ctx.strokeStyle = `${type.color}55`;
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 4; i++) {
+          const a = (Math.PI / 2) * i + Math.PI / 4;
+          ctx.beginPath();
+          ctx.moveTo(x + Math.cos(a) * s * 0.2, y + Math.sin(a) * s * 0.2);
+          ctx.lineTo(x + Math.cos(a) * s * 0.65, y + Math.sin(a) * s * 0.65);
+          ctx.stroke();
+        }
+      }
+
+      // Tier 3: rotating outer ring
+      if (bossTier >= 3) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(time * 0.002);
+        octPath(ctx, 0, 0, s * 1.15);
+        ctx.strokeStyle = `${type.color}30`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Core dot - brighter at higher tiers
+      ctx.fillStyle = hitFlash > 0 ? '#ffffff' : `${type.color}`;
+      ctx.shadowColor = type.color;
+      ctx.shadowBlur = 4 + bossTier * 3;
+      ctx.beginPath();
+      ctx.arc(x, y, 2 + bossTier, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'star':
+      starPath(ctx, x, y, s);
+      ctx.fill();
+      ctx.stroke();
+      break;
+    case 'cross':
+      crossPath(ctx, x, y, s);
+      ctx.fill();
       ctx.stroke();
       break;
     default:
@@ -385,6 +672,37 @@ function drawEnemy(ctx: CanvasRenderingContext2D, enemy: Enemy) {
       ctx.stroke();
   }
 
+  // Ability indicators
+  ctx.shadowBlur = 0;
+
+  // Shield bar (above health bar)
+  if (enemy.shieldMax > 0 && enemy.shieldHp > 0) {
+    ctx.globalAlpha = enemy.phased ? 0.3 : 0.8;
+    const barW = Math.max(s * 2.5, 16);
+    const barH = 2;
+    const bx = x - barW / 2;
+    const by = y - s - 12;
+    ctx.fillStyle = '#332200';
+    ctx.fillRect(bx, by, barW, barH);
+    ctx.fillStyle = '#ffcc44';
+    ctx.fillRect(bx, by, barW * (enemy.shieldHp / enemy.shieldMax), barH);
+    ctx.globalAlpha = enemy.phased ? 0.25 : 1;
+  }
+
+  // Sprint indicator
+  if (enemy.sprintTriggered) {
+    ctx.globalAlpha = 0.4;
+    ctx.strokeStyle = enemy.type.color;
+    ctx.lineWidth = 1;
+    for (let t = 1; t <= 3; t++) {
+      ctx.beginPath();
+      ctx.arc(x - Math.cos(angle) * t * 5, y - Math.sin(angle) * t * 5, 2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = enemy.phased ? 0.25 : 1;
+  }
+
+  // Slow indicator
   if (enemy.slowTimer > 0) {
     ctx.globalAlpha = 0.5;
     ctx.strokeStyle = '#4488ff';
@@ -392,11 +710,10 @@ function drawEnemy(ctx: CanvasRenderingContext2D, enemy: Enemy) {
     ctx.beginPath();
     ctx.arc(x, y, s + 3, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = enemy.phased ? 0.25 : 1;
   }
 
-  ctx.shadowBlur = 0;
-
+  // Health bar
   if (hp < maxHp) {
     const barW = Math.max(s * 2.5, 16);
     const barH = 3;
@@ -514,7 +831,7 @@ export function render(ctx: CanvasRenderingContext2D, _time: number): void {
   }
 
   for (const tower of towers) drawTower(ctx, tower, _time);
-  for (const enemy of enemies) drawEnemy(ctx, enemy);
+  for (const enemy of enemies) drawEnemy(ctx, enemy, _time);
 
   // Projectiles
   for (const proj of projectiles) {

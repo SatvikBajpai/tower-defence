@@ -5,10 +5,19 @@ interface Props {
   onStateChange: () => void;
 }
 
+const SPEEDS = [1, 2, 4];
+
 export default function Toolbar({ onStateChange }: Props) {
   const towerList = Object.values(TOWER_TYPES);
   const isWaiting = state.phase === 'waiting';
   const isActive = state.phase === 'spawning' || state.phase === 'active';
+  const canSend = isWaiting && state.levelWave < state.levelWavesTotal;
+
+  function cycleSpeed() {
+    const idx = SPEEDS.indexOf(state.speed);
+    state.speed = SPEEDS[(idx + 1) % SPEEDS.length];
+    onStateChange();
+  }
 
   return (
     <div className="toolbar">
@@ -16,22 +25,14 @@ export default function Toolbar({ onStateChange }: Props) {
         {towerList.map(type => {
           const affordable = state.gold >= type.cost;
           const selected = state.selectedTowerType === type.id;
-
           return (
             <button
               key={type.id}
               className={`tower-btn ${selected ? 'selected' : ''} ${!affordable ? 'disabled' : ''}`}
-              style={{
-                '--tower-color': type.color,
-                '--tower-dark': type.colorDark,
-              } as React.CSSProperties}
+              style={{ '--tower-color': type.color, '--tower-dark': type.colorDark } as React.CSSProperties}
               onClick={() => {
-                if (state.selectedTowerType === type.id) {
-                  state.selectedTowerType = null;
-                } else {
-                  state.selectedTowerType = type.id;
-                  state.selectedTower = null;
-                }
+                state.selectedTowerType = state.selectedTowerType === type.id ? null : type.id;
+                if (state.selectedTowerType) state.selectedTower = null;
                 onStateChange();
               }}
             >
@@ -45,13 +46,10 @@ export default function Toolbar({ onStateChange }: Props) {
       </div>
 
       <div className="toolbar-actions">
-        {isWaiting && (
+        {canSend && (
           <button
             className="action-btn send-wave ready"
-            onClick={() => {
-              startWave();
-              onStateChange();
-            }}
+            onClick={() => { startWave(); onStateChange(); }}
           >
             <span>SEND WAVE</span>
             <span className="action-key">SPACE</span>
@@ -61,20 +59,15 @@ export default function Toolbar({ onStateChange }: Props) {
         {isActive && (
           <div className="wave-status">
             <span className="wave-status-name">{state.waveName}</span>
-            <span className="wave-status-count">
-              {state.waveEnemiesCleared}/{state.waveEnemiesTotal}
-            </span>
+            <span className="wave-status-count">{state.waveEnemiesCleared}/{state.waveEnemiesTotal}</span>
           </div>
         )}
 
         <button
           className={`action-btn speed-btn ${state.speed > 1 ? 'active' : ''}`}
-          onClick={() => {
-            state.speed = state.speed === 1 ? 2 : 1;
-            onStateChange();
-          }}
+          onClick={cycleSpeed}
         >
-          <span>{state.speed > 1 ? '2X' : '1X'}</span>
+          <span>{state.speed}X</span>
           <span className="action-key">F</span>
         </button>
       </div>

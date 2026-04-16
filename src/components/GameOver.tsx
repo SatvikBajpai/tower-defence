@@ -1,5 +1,4 @@
-import { state, resetGame } from '../game/engine';
-import { invalidateBackground } from '../game/renderer';
+import { state } from '../game/engine';
 
 interface Props {
   onStateChange: () => void;
@@ -16,28 +15,25 @@ export default function GameOver({ onStateChange }: Props) {
 
         <div className="go-stats">
           <div className="go-stat">
+            <span className="go-stat-label">Level</span>
+            <span className="go-stat-value">{state.levelNum}</span>
+          </div>
+          <div className="go-stat">
             <span className="go-stat-label">Waves Survived</span>
-            <span className="go-stat-value">{state.waveNum}</span>
+            <span className="go-stat-value">{state.levelWave}</span>
           </div>
           <div className="go-stat">
             <span className="go-stat-label">Enemies Destroyed</span>
             <span className="go-stat-value">{state.enemiesKilled}</span>
           </div>
           <div className="go-stat">
-            <span className="go-stat-label">Final Score</span>
+            <span className="go-stat-label">Score</span>
             <span className="go-stat-value">{state.score}</span>
           </div>
         </div>
 
-        <button
-          className="go-restart"
-          onClick={() => {
-            resetGame();
-            invalidateBackground();
-            onStateChange();
-          }}
-        >
-          REINITIALIZE
+        <button className="go-restart" onClick={onStateChange}>
+          LEVEL SELECT
         </button>
       </div>
     </div>

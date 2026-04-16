@@ -38,9 +38,6 @@ body {
 #root {
   width: 100%;
   height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 /* ---- APP LAYOUT ---- */
@@ -48,8 +45,8 @@ body {
 .app {
   display: flex;
   flex-direction: column;
-  max-width: 960px;
   width: 100%;
+  height: 100vh;
 }
 
 .game-area {
@@ -57,6 +54,12 @@ body {
   border: 1px solid var(--border);
   border-top: none;
   background: var(--surface);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
 /* ---- HUD ---- */
@@ -118,6 +121,14 @@ body {
 .wave-value { color: var(--cyan); }
 .gold-value { color: var(--gold); }
 .lives-value { color: var(--red); }
+
+.hud-level-name {
+  font-family: var(--font-display);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+}
 
 .hud-wave-name {
   font-family: var(--font-display);
@@ -701,26 +712,133 @@ body {
   margin-top: -2px;
 }
 
-.start-btn {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 3px;
-  padding: 16px 44px;
-  background: transparent;
-  border: 1px solid var(--cyan);
-  color: var(--cyan);
-  cursor: pointer;
-  transition: all 0.25s;
-  text-transform: uppercase;
-  margin-top: 4px;
+/* ---- LEVEL SELECT ---- */
+
+.level-select {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 640px;
 }
 
-.start-btn:hover {
-  background: rgba(0, 255, 255, 0.1);
-  box-shadow: 0 0 30px rgba(0, 255, 255, 0.2),
-              inset 0 0 15px rgba(0, 255, 255, 0.05);
-  transform: translateY(-1px);
+.ls-header {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--text-dim);
+}
+
+.ls-grid {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.ls-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+
+.ls-card:hover:not(.locked) {
+  border-color: var(--cyan);
+  background: rgba(0, 255, 255, 0.04);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 255, 255, 0.1);
+}
+
+.ls-card.latest {
+  border-color: var(--cyan);
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.1);
+}
+
+.ls-card.locked {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.ls-num {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 24px;
+  color: var(--cyan);
+  line-height: 1;
+}
+
+.ls-card.locked .ls-num {
+  color: var(--text-dim);
+}
+
+.ls-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--text-bright);
+}
+
+.ls-sub {
+  font-size: 9px;
+  opacity: 0.5;
+}
+
+.ls-meta {
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* ---- COMPACT CONTROLS ---- */
+
+.start-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.si-row-compact {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.si-key-sm {
+  color: var(--cyan);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  padding: 1px 5px;
+  border: 1px solid rgba(0, 255, 255, 0.15);
+  border-radius: 2px;
+  background: rgba(0, 255, 255, 0.03);
+}
+
+.si-sep {
+  width: 1px;
+  height: 12px;
+  background: var(--border);
+  margin: 0 2px;
 }
 
 /* ---- GAME OVER ---- */
@@ -796,6 +914,139 @@ body {
 .go-restart:hover {
   background: rgba(255, 0, 68, 0.1);
   box-shadow: 0 0 20px rgba(255, 0, 68, 0.2);
+}
+
+/* ---- LEVEL COMPLETE ---- */
+
+.level-complete-panel {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  animation: fadeIn 0.6s ease;
+}
+
+.lc-badge {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--cyan);
+  padding: 4px 16px;
+  border: 1px solid var(--cyan);
+  border-radius: 2px;
+}
+
+.lc-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 42px;
+  letter-spacing: 6px;
+  color: var(--green);
+  text-shadow: 0 0 40px rgba(0, 255, 102, 0.4);
+}
+
+.lc-subtitle {
+  font-size: 13px;
+  letter-spacing: 4px;
+  color: var(--text);
+  opacity: 0.6;
+}
+
+.lc-stats {
+  display: flex;
+  gap: 30px;
+  padding: 20px 30px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.lc-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.lc-stat-label {
+  font-size: 10px;
+  letter-spacing: 1px;
+  opacity: 0.5;
+}
+
+.lc-stat-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 24px;
+  color: var(--text-bright);
+}
+
+.lc-btn {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 3px;
+  padding: 14px 40px;
+  background: transparent;
+  border: 1px solid var(--green);
+  color: var(--green);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+
+.lc-btn:hover {
+  background: rgba(0, 255, 102, 0.1);
+  box-shadow: 0 0 25px rgba(0, 255, 102, 0.2);
+}
+
+.lc-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.lc-btn-secondary {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 8px 24px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.lc-btn-secondary:hover {
+  border-color: var(--text);
+  color: var(--text-bright);
+}
+
+.lc-victory {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+}
+
+.lc-victory-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: 3px;
+  color: var(--gold);
+  text-shadow: 0 0 20px rgba(255, 204, 0, 0.4);
+}
+
+.lc-victory-sub {
+  font-size: 14px;
+  color: var(--text-bright);
 }
 
 @keyframes fadeIn {

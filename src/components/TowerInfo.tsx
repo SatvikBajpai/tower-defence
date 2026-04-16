@@ -14,7 +14,7 @@ export default function TowerInfo({ onStateChange }: Props) {
 
   const stats = tower.type.levels[tower.level];
   const isFusion = !!tower.type.fusion;
-  const canUpgrade = !isFusion && tower.level + 1 < tower.type.levels.length;
+  const canUpgrade = tower.level + 1 < tower.type.levels.length;
   const upgradeCost = canUpgrade
     ? tower.type.levels[tower.level + 1].upgradeCost ?? tower.type.cost
     : 0;
@@ -126,7 +126,7 @@ export default function TowerInfo({ onStateChange }: Props) {
             UPGRADE ({upgradeCost}g)
           </button>
         )}
-        {!canUpgrade && !isFusion && <div className="ti-maxed">MAX LEVEL</div>}
+        {!canUpgrade && <div className="ti-maxed">MAX LEVEL</div>}
 
         {/* Sell */}
         <button

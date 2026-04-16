@@ -73,7 +73,7 @@ export default function GameCanvas({ onStateChange }: Props) {
   });
 
   return (
-    <div ref={wrapperRef} style={{ position: 'relative' }}>
+    <div ref={wrapperRef} style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <canvas
         ref={canvasRef}
         width={CANVAS_W}
@@ -84,9 +84,9 @@ export default function GameCanvas({ onStateChange }: Props) {
         onContextMenu={handleRightClick}
         style={{
           display: 'block',
-          width: '100%',
-          height: 'auto',
-          imageRendering: 'auto',
+          maxWidth: '100%',
+          maxHeight: '100%',
+          objectFit: 'contain',
           cursor: state.selectedTowerType ? 'crosshair' : 'default',
         }}
       />
