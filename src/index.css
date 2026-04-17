@@ -31,13 +31,38 @@ body {
   color: var(--text);
   font-family: var(--font-mono);
   overflow: hidden;
-  height: 100vh;
+  height: 100dvh;
   width: 100vw;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
 }
 
 #root {
   width: 100%;
-  height: 100vh;
+  height: 100dvh;
+}
+
+.canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+canvas {
+  display: block;
+  background: #06060f;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
 }
 
 /* ---- APP LAYOUT ---- */
@@ -576,6 +601,38 @@ body {
   background: color-mix(in srgb, var(--tower-color) 12%, transparent);
   color: var(--tower-color);
   border: 1px solid color-mix(in srgb, var(--tower-color) 30%, transparent);
+}
+
+.ti-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ti-close-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.ti-close-btn:hover {
+  background: rgba(255, 0, 68, 0.1);
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.tower-info-backdrop {
+  display: none;
 }
 
 .ti-dps {
@@ -1409,9 +1466,160 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ---- CANVAS ---- */
+/* ---- MOBILE RESPONSIVE ---- */
 
-canvas {
-  display: block;
-  background: #06060f;
+@media (max-width: 1100px), (pointer: coarse) and (max-width: 1400px) {
+  .hud {
+    padding: 6px 8px;
+    gap: 8px;
+    min-height: 40px;
+    font-size: 11px;
+  }
+  .hud-label { font-size: 8px; letter-spacing: 1px; }
+  .hud-value { font-size: 13px; min-width: 28px; }
+  .hud-title { font-size: 11px; letter-spacing: 2px; }
+  .hud-level-name { font-size: 8px; min-width: 50px; }
+  .hud-wave-name { font-size: 9px; min-width: 100px; }
+  .lives-bar { width: 40px; }
+
+  .next-wave-bar {
+    padding: 4px 8px;
+    font-size: 9px;
+    min-height: 22px;
+    gap: 6px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .nw-label, .nw-name, .nw-bonus { font-size: 9px; }
+  .nw-enemy { font-size: 9px; }
+
+  .toolbar {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  .tower-buttons {
+    gap: 4px;
+  }
+  .tower-btn {
+    padding: 5px 3px;
+  }
+  .tower-btn-key { font-size: 8px; top: 2px; left: 3px; }
+  .tower-btn-name { font-size: 10px; letter-spacing: 0.5px; }
+  .tower-btn-cost { font-size: 11px; }
+  .tower-btn-desc { display: none; }
+
+  .toolbar-actions { min-width: 0; gap: 3px; }
+  .wave-slot { min-width: 110px; max-width: 110px; }
+
+  .action-btn {
+    padding: 5px 8px;
+    font-size: 10px;
+    gap: 4px;
+  }
+  .action-key { display: none; }
+
+  .frost-btn { min-width: 60px; }
+  .frost-icon { font-size: 12px; }
+  .frost-label { font-size: 10px; }
+
+  .wc-label { font-size: 8px; }
+  .wc-timer { font-size: 12px; min-width: 18px; }
+  .wc-skip { font-size: 8px; padding: 1px 4px; }
+  .wave-status-name { font-size: 8px; }
+  .wave-status-count { font-size: 10px; }
+
+  /* Mobile backdrop dims the canvas and closes panel on tap */
+  .tower-info-backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 9;
+    backdrop-filter: blur(2px);
+  }
+
+  /* Tower info floats inside game-area (absolute, not fixed) so it never
+     overlaps the toolbar below. */
+  .tower-info {
+    position: absolute;
+    top: auto;
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: none;
+    max-height: calc(100% - 20px);
+    overflow-y: auto;
+    padding: 8px 10px 10px;
+    font-size: 11px;
+    border-radius: 6px;
+  }
+
+  /* Compress panel internals on mobile */
+  .tower-info .ti-header { margin-bottom: 0; padding-bottom: 4px; }
+  .tower-info .ti-name { font-size: 12px; }
+  .tower-info .ti-level-pill { font-size: 8px; padding: 1px 4px; }
+  .tower-info .ti-dps { padding: 4px 8px; }
+  .tower-info .ti-dps-value { font-size: 16px; }
+  .tower-info .ti-dmg-type { font-size: 8px; padding: 2px 5px; }
+  .tower-info .ti-stats { gap: 2px; }
+  .tower-info .ti-stat { padding: 2px; }
+  .tower-info .ti-stat-value { font-size: 11px; }
+  .tower-info .ti-section-label { font-size: 7px; margin-top: 1px; }
+  .tower-info .ti-target-btn { padding: 3px 1px; font-size: 8px; }
+  .tower-info .ti-btn { padding: 5px 6px; font-size: 10px; }
+  .tower-info .ti-btn-sub { font-size: 7px; }
+  .tower-info .ti-footer { font-size: 8px; padding-top: 3px; }
+  .tower-info .ti-kills { font-size: 9px; margin-bottom: 4px; }
+  .tower-info .ti-actions-row { gap: 3px; }
+  .tower-info .ti-maxed { padding: 4px; font-size: 9px; }
+
+  /* Start screen */
+  .start-title { font-size: 34px; letter-spacing: 5px; }
+  .start-subtitle { font-size: 10px; letter-spacing: 4px; }
+  .start-deco-line { width: 160px; }
+  .level-select { max-width: 100%; padding: 0 10px; }
+  .ls-grid { gap: 4px; }
+  .ls-card { padding: 8px 4px; gap: 2px; }
+  .ls-num { font-size: 18px; }
+  .ls-name { font-size: 9px; letter-spacing: 1px; }
+  .ls-sub, .ls-meta { font-size: 8px; }
+  .start-controls { padding: 8px 10px; }
+  .si-row-compact { font-size: 10px; gap: 4px; }
+  .si-sep { display: none; }
+
+  /* Overlays */
+  .pause-title, .go-title, .lc-title { font-size: 32px; letter-spacing: 4px; }
+  .go-stats, .lc-stats { padding: 12px 16px; gap: 14px; flex-wrap: wrap; }
+  .go-stat-value, .lc-stat-value { font-size: 18px; }
+  .go-stat-label, .lc-stat-label { font-size: 9px; }
+}
+
+/* Very small screens */
+@media (max-width: 500px) {
+  .hud-center { display: none; }
+  .hud-level-name { display: none; }
+  .hud-wave-name { min-width: 60px; }
+  .tower-btn-cost { font-size: 10px; }
+}
+
+/* Portrait orientation warning */
+@media (max-width: 1100px) and (orientation: portrait), (pointer: coarse) and (orientation: portrait) {
+  .app::before {
+    content: '↻ ROTATE TO LANDSCAPE';
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(4, 4, 10, 0.96);
+    color: var(--cyan);
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-align: center;
+    z-index: 9999;
+    text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+  }
 }

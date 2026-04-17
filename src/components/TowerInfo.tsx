@@ -54,25 +54,36 @@ export default function TowerInfo({ onStateChange }: Props) {
     }
   }
 
+  function close() {
+    state.selectedTower = null;
+    onStateChange();
+  }
+
   return (
-    <div
-      className="tower-info"
-      style={{
-        ...sideStyle,
-        '--tower-color': tower.type.color,
-        '--tower-dark': tower.type.colorDark,
-      } as React.CSSProperties}
-    >
-      {/* Header */}
-      <div className="ti-header">
-        <div className="ti-title">
-          {isFusion && <span className="ti-fusion-badge">F</span>}
-          <span className="ti-name">{tower.type.name}</span>
+    <>
+      {/* Mobile backdrop - tap to dismiss */}
+      <div className="tower-info-backdrop" onClick={close} />
+      <div
+        className="tower-info"
+        style={{
+          ...sideStyle,
+          '--tower-color': tower.type.color,
+          '--tower-dark': tower.type.colorDark,
+        } as React.CSSProperties}
+      >
+        {/* Header */}
+        <div className="ti-header">
+          <div className="ti-title">
+            {isFusion && <span className="ti-fusion-badge">F</span>}
+            <span className="ti-name">{tower.type.name}</span>
+          </div>
+          <div className="ti-header-right">
+            <div className="ti-level-pill">
+              {isFusion ? 'FUSION ' : ''}LV {tower.level + 1}/{tower.type.levels.length}
+            </div>
+            <button className="ti-close-btn" onClick={close} aria-label="close">✕</button>
+          </div>
         </div>
-        <div className="ti-level-pill">
-          {isFusion ? 'FUSION ' : ''}LV {tower.level + 1}/{tower.type.levels.length}
-        </div>
-      </div>
 
       {/* DPS banner */}
       <div className="ti-dps">
@@ -206,10 +217,11 @@ export default function TowerInfo({ onStateChange }: Props) {
         </button>
       </div>
 
-      <div className="ti-footer">
-        <span>Kills: {tower.kills}</span>
-        <span>Invested: {tower.totalInvested}g</span>
+        <div className="ti-footer">
+          <span>Kills: {tower.kills}</span>
+          <span>Invested: {tower.totalInvested}g</span>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

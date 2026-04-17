@@ -14,39 +14,52 @@ export default function GameCanvas({ onStateChange }: Props) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const uiTickRef = useRef(0);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Compute grid coords from pointer event
+  const coordsFromEvent = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
     const scaleX = CANVAS_W / rect.width;
     const scaleY = CANVAS_H / rect.height;
-    const px = (e.clientX - rect.left) * scaleX;
-    const py = (e.clientY - rect.top) * scaleY;
-    state.mousePixel = { x: px, y: py };
-    state.mouseGrid = { x: Math.floor(px / CELL), y: Math.floor(py / CELL) };
+    const px = (clientX - rect.left) * scaleX;
+    const py = (clientY - rect.top) * scaleY;
+    return {
+      px, py,
+      col: Math.floor(px / CELL),
+      row: Math.floor(py / CELL),
+    };
   }, []);
 
-  const handleMouseLeave = useCallback(() => {
-    state.mouseGrid = null;
-    state.mousePixel = null;
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    // Only track position for mouse (hover preview). Touch fires move during drag
+    // which we want to treat like tap position.
+    const c = coordsFromEvent(e.clientX, e.clientY);
+    if (!c) return;
+    state.mousePixel = { x: c.px, y: c.py };
+    state.mouseGrid = { x: c.col, y: c.row };
+  }, [coordsFromEvent]);
+
+  const handlePointerLeave = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    // Mouse only - touch doesn't need persistent hover state
+    if (e.pointerType === 'mouse') {
+      state.mouseGrid = null;
+      state.mousePixel = null;
+    }
   }, []);
 
-  const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = CANVAS_W / rect.width;
-    const scaleY = CANVAS_H / rect.height;
-    const px = (e.clientX - rect.left) * scaleX;
-    const py = (e.clientY - rect.top) * scaleY;
-    const col = Math.floor(px / CELL);
-    const row = Math.floor(py / CELL);
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const c = coordsFromEvent(e.clientX, e.clientY);
+    if (!c) return;
 
-    // Check if clicking on an existing tower
-    const clicked = towers.find(t => t.col === col && t.row === row);
+    // For touch, show the placement preview at tapped cell
+    if (e.pointerType === 'touch') {
+      state.mousePixel = { x: c.px, y: c.py };
+      state.mouseGrid = { x: c.col, y: c.row };
+    }
 
+    const clicked = towers.find(t => t.col === c.col && t.row === c.row);
     if (clicked) {
-      // Always select existing tower, even if placing
       state.selectedTowerType = null;
       state.selectedTower = clicked;
       onStateChange();
@@ -55,8 +68,8 @@ export default function GameCanvas({ onStateChange }: Props) {
 
     if (state.selectedTowerType) {
       const type = TOWER_TYPES[state.selectedTowerType];
-      if (type && state.gold >= type.cost && canPlace(col, row)) {
-        placeTower(col, row, state.selectedTowerType);
+      if (type && state.gold >= type.cost && canPlace(c.col, c.row)) {
+        placeTower(c.col, c.row, state.selectedTowerType);
         onStateChange();
       }
       return;
@@ -64,9 +77,9 @@ export default function GameCanvas({ onStateChange }: Props) {
 
     state.selectedTower = null;
     onStateChange();
-  }, [onStateChange]);
+  }, [coordsFromEvent, onStateChange]);
 
-  const handleRightClick = useCallback((e: React.MouseEvent) => {
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     state.selectedTowerType = null;
     state.selectedTower = null;
@@ -83,21 +96,18 @@ export default function GameCanvas({ onStateChange }: Props) {
   });
 
   return (
-    <div ref={wrapperRef} style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div ref={wrapperRef} className="canvas-wrapper">
       <canvas
         ref={canvasRef}
         width={CANVAS_W}
         height={CANVAS_H}
-        onClick={handleClick}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        onContextMenu={handleRightClick}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+        onContextMenu={handleContextMenu}
         style={{
-          display: 'block',
-          maxWidth: '100%',
-          maxHeight: '100%',
-          objectFit: 'contain',
           cursor: state.selectedTowerType ? 'crosshair' : 'default',
+          touchAction: 'none',
         }}
       />
     </div>
