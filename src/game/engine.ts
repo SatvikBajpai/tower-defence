@@ -248,10 +248,10 @@ export function fuseTowers(towerA: Tower, towerB: Tower): boolean {
   const idx = towers.indexOf(towerB);
   if (idx >= 0) towers.splice(idx, 1);
 
-  // Fusion level based on combined upgrade levels of both parents
-  // Both at lv0 = fusion lv0, one maxed = fusion lv1, both maxed = fusion lv2
-  const combinedLevels = towerA.level + towerB.level;
-  const fusionLevel = Math.min(combinedLevels, fusionType.levels.length - 1);
+  // Fusion level = average of parent levels (floored). Prevents the exploit
+  // where L3 + L1 skipped to max fusion. L3+L1 → L2, L2+L1 → L1, L3+L3 → L3.
+  const avgLevel = Math.floor((towerA.level + towerB.level) / 2);
+  const fusionLevel = Math.min(avgLevel, fusionType.levels.length - 1);
 
   towerA.type = fusionType;
   towerA.level = fusionLevel;
