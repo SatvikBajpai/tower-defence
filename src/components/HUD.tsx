@@ -23,9 +23,12 @@ export default function HUD() {
             <span className="hud-label">WAVE</span>
             <span className="hud-value">{state.levelWave}/{state.levelWavesTotal}</span>
           </div>
-          {isActive && state.waveName && (
-            <div className="hud-wave-name">{state.waveName}</div>
-          )}
+          <div
+            className="hud-wave-name"
+            style={{ visibility: isActive && state.waveName ? 'visible' : 'hidden' }}
+          >
+            {state.waveName || 'PLACEHOLDER'}
+          </div>
         </div>
 
         <div className="hud-center">
@@ -54,31 +57,51 @@ export default function HUD() {
         </div>
       </div>
 
-      {isActive && (
-        <div className="wave-progress-bar">
-          <div className="wave-progress-fill" style={{ width: `${progress * 100}%` }} />
-        </div>
-      )}
+      {/* Progress bar - always present so layout doesn't shift between waves */}
+      <div className="wave-progress-bar">
+        <div
+          className="wave-progress-fill"
+          style={{ width: `${isActive ? progress * 100 : 0}%` }}
+        />
+      </div>
 
-      {next && (
-        <div className="next-wave-bar">
-          <span className="nw-label">NEXT:</span>
-          <span className="nw-name">{next.name}</span>
-          <div className="nw-enemies">
-            {next.entries.map((entry, i) => {
-              const et = ENEMY_TYPES[entry.type];
-              if (!et) return null;
-              return (
-                <span key={i} className="nw-enemy" style={{ color: et.color }}>
-                  <span className="nw-enemy-dot" style={{ background: et.color }} />
-                  {entry.count} {et.name}
-                </span>
-              );
-            })}
-          </div>
-          <span className="nw-bonus">+{next.bonus}g</span>
-        </div>
-      )}
+      {/* Info bar - always present with stable height, content swaps by phase */}
+      <div className="next-wave-bar">
+        {next && (
+          <>
+            <span className="nw-label">NEXT:</span>
+            <span className="nw-name">{next.name}</span>
+            <div className="nw-enemies">
+              {next.entries.map((entry, i) => {
+                const et = ENEMY_TYPES[entry.type];
+                if (!et) return null;
+                return (
+                  <span key={i} className="nw-enemy" style={{ color: et.color }}>
+                    <span className="nw-enemy-dot" style={{ background: et.color }} />
+                    {entry.count} {et.name}
+                  </span>
+                );
+              })}
+            </div>
+            <span className="nw-bonus">+{next.bonus}g</span>
+          </>
+        )}
+        {isActive && (
+          <>
+            <span className="nw-label">IN WAVE:</span>
+            <span className="nw-name">{state.waveName}</span>
+            <div className="nw-enemies">
+              <span className="nw-enemy" style={{ color: '#88aacc' }}>
+                <span className="nw-enemy-dot" style={{ background: '#88aacc' }} />
+                {state.waveEnemiesCleared}/{state.waveEnemiesTotal} cleared
+              </span>
+            </div>
+          </>
+        )}
+        {!next && !isActive && (
+          <span className="nw-label" style={{ opacity: 0.4 }}>LEVEL COMPLETE</span>
+        )}
+      </div>
     </div>
   );
 }

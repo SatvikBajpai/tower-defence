@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { state, startWave, overchargeTower, startLevel, resetGame } from './game/engine';
+import { state, startWave, overchargeTower, startLevel, resetGame, castFrostNova } from './game/engine';
 import GameCanvas from './components/GameCanvas';
 import HUD from './components/HUD';
 import Toolbar from './components/Toolbar';
@@ -88,6 +88,9 @@ export default function App() {
           overchargeTower(state.selectedTower);
           forceUpdate();
         }
+      } else if (e.key === 'z' || e.key === 'Z') {
+        castFrostNova();
+        forceUpdate();
       }
     }
 

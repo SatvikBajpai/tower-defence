@@ -3,13 +3,17 @@ import {
   SELL_RATIO, MAX_PARTICLES, TOWER_TYPES, ENEMY_TYPES,
   FUSION_TYPES, FUSION_MAP, getFusionKey,
   OVERCHARGE_DURATION, OVERCHARGE_COOLDOWN,
+  OVERCHARGE_DAMAGE_MULT, OVERCHARGE_FIRE_MULT,
+  CHAIN_DAMAGE_FALLOFF, SPLASH_SECONDARY_MULT, CHAIN_SPLASH_MULT,
+  BOSS_HP_SCALE_MAX, CANVAS_W, CANVAS_H,
+  FROST_NOVA_COOLDOWN, FROST_NOVA_DURATION, FROST_NOVA_SLOW,
 } from './config';
 import { grid, canPlace, getPositionOnPath, totalPathLength, initPath } from './path';
 import { generateWave, peekNextWave } from './waves';
 import { invalidateBackground } from './renderer';
 import type {
   GameState, Tower, Enemy, Projectile, Particle,
-  FloatingText, ArcEffect, Point,
+  FloatingText, ArcEffect, Point, TargetingMode,
 } from './types';
 
 let nextId = 1;
@@ -30,6 +34,9 @@ export const state: GameState = {
   waveBonus: 0,
   waveCountdown: 5,
   announcement: null,
+  lifeFlash: 0,
+  shake: 0,
+  frostCooldown: 0,
   levelNum: 1,
   levelWave: 0,
   levelWavesTotal: LEVELS[0].waves,
@@ -54,6 +61,12 @@ function dist(a: Point, b: Point): number {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
   return Math.sqrt(dx * dx + dy * dy);
+}
+
+function distSq(a: Point, b: Point): number {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return dx * dx + dy * dy;
 }
 
 function angleTo(a: Point, b: Point): number {
@@ -114,6 +127,9 @@ export function startLevel(levelNum: number) {
   state.paused = false;
   state.waveCountdown = 0;
   state.announcement = null;
+  state.lifeFlash = 0;
+  state.shake = 0;
+  state.frostCooldown = 0;
   state.selectedTowerType = null;
   state.selectedTower = null;
 
@@ -160,6 +176,7 @@ export function placeTower(col: number, row: number, typeId: string): boolean {
     target: null,
     pulseAnim: 1.0,
     overchargeTime: 0,
+    targetingMode: 'first',
   };
 
   towers.push(tower);
@@ -254,6 +271,65 @@ export function fuseTowers(towerA: Tower, towerB: Tower): boolean {
 
 // ---- OVERCHARGE ----
 
+export function computeTowerDps(tower: Tower): number {
+  const stats = tower.type.levels[tower.level];
+  const baseDps = stats.damage * (1000 / stats.fireRate);
+  // Account for chain targets (approx, assumes full chain uptime)
+  if (stats.chains) {
+    const chainBonus = stats.damage * CHAIN_DAMAGE_FALLOFF * stats.chains;
+    return Math.round(baseDps + chainBonus * (1000 / stats.fireRate));
+  }
+  // Splash assumes ~1 extra target on average
+  if (stats.splashRadius) {
+    return Math.round(baseDps * (1 + SPLASH_SECONDARY_MULT));
+  }
+  return Math.round(baseDps);
+}
+
+export function cycleTargetingMode(tower: Tower) {
+  const modes: TargetingMode[] = ['first', 'last', 'strongest', 'closest'];
+  const idx = modes.indexOf(tower.targetingMode);
+  tower.targetingMode = modes[(idx + 1) % modes.length];
+}
+
+export function castFrostNova(): boolean {
+  if (state.frostCooldown > 0) return false;
+  if (state.phase === 'gameover' || state.paused) return false;
+
+  state.frostCooldown = FROST_NOVA_COOLDOWN;
+
+  // Freeze all alive enemies
+  for (const enemy of enemies) {
+    if (!enemy.alive) continue;
+    enemy.slowTimer = FROST_NOVA_DURATION;
+    enemy.slowAmount = FROST_NOVA_SLOW;
+  }
+
+  // Full-map frost ring pulse
+  addParticle({
+    x: CANVAS_W / 2, y: CANVAS_H / 2, vx: 0, vy: 0,
+    life: 0.8, color: '#88ddff', size: 0,
+    type: 'ring', ringRadius: 20, ringMaxRadius: Math.max(CANVAS_W, CANVAS_H),
+  });
+
+  // Snow particles scattered
+  for (let i = 0; i < 60; i++) {
+    addParticle({
+      x: Math.random() * CANVAS_W,
+      y: Math.random() * CANVAS_H,
+      vx: (Math.random() - 0.5) * 40,
+      vy: (Math.random() - 0.5) * 40,
+      life: 0.8 + Math.random() * 0.4,
+      color: '#bbeeff',
+      size: 2 + Math.random() * 2,
+      type: 'spark',
+    });
+  }
+
+  addFloatingText(CANVAS_W / 2, CANVAS_H / 2 - 40, 'FROST NOVA', '#88ddff');
+  return true;
+}
+
 export function overchargeTower(tower: Tower): boolean {
   if (tower.overchargeTime !== 0) return false;
   tower.overchargeTime = OVERCHARGE_DURATION;
@@ -282,10 +358,14 @@ export function startWave(): boolean {
   for (const entry of wave.entries) {
     const et = ENEMY_TYPES[entry.type];
     if (!et) continue;
+    // Cap boss HP scaling to avoid math-locked late game
+    const effectiveScale = entry.type === 'boss'
+      ? Math.min(wave.hpScale, BOSS_HP_SCALE_MAX)
+      : wave.hpScale;
     for (let i = 0; i < entry.count; i++) {
       spawnQueue.push({
         type: entry.type,
-        hp: Math.round(et.hp * wave.hpScale),
+        hp: Math.round(et.hp * effectiveScale),
         speed: et.speed,
         gold: et.gold,
         delay: entry.delay,
@@ -293,18 +373,21 @@ export function startWave(): boolean {
     }
   }
 
-  for (let i = spawnQueue.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    if (Math.abs(i - j) < 4) {
-      [spawnQueue[i], spawnQueue[j]] = [spawnQueue[j], spawnQueue[i]];
-    }
-  }
+  // Wave order is deliberate - do not shuffle. Burst patterns depend on ordering.
 
   state.waveEnemiesTotal = spawnQueue.length;
   state.waveEnemiesCleared = 0;
   spawnTimer = 0;
   state.phase = 'spawning';
-  state.announcement = { wave: state.levelWave, name: state.waveName, timer: 2.5 };
+  const isBoss = state.waveName === state.waveName.toUpperCase() && state.waveName.length > 3;
+  state.announcement = {
+    wave: state.levelWave,
+    name: state.waveName,
+    timer: isBoss ? 4.0 : 3.5,
+    maxTimer: isBoss ? 4.0 : 3.5,
+    isBoss,
+  };
+  if (isBoss) state.shake = Math.max(state.shake, 0.6);
   return true;
 }
 
@@ -324,6 +407,7 @@ function createEnemy(et: typeof ENEMY_TYPES[string], hp: number, speed: number, 
     shieldHp: shieldMax, shieldMax,
     sprintReady: et.ability === 'sprint',
     sprintTriggered: false,
+    sprintTimer: 0,
   };
   const pos = getPositionOnPath(distance);
   enemy.x = pos.x; enemy.y = pos.y; enemy.angle = pos.angle;
@@ -338,16 +422,26 @@ function spawnEnemy(data: typeof spawnQueue[0]) {
 
 function findTarget(tower: Tower): Enemy | null {
   const stats = tower.type.levels[tower.level];
-  const range = stats.range * CELL;
+  const rangeSq = (stats.range * CELL) ** 2;
+  const mode: TargetingMode = tower.targetingMode;
   let best: Enemy | null = null;
-  let bestDist = -1;
+  let bestKey = mode === 'last' ? Infinity : (mode === 'closest' ? Infinity : -Infinity);
 
   for (const enemy of enemies) {
     if (!enemy.alive || enemy.phased) continue;
-    const d = dist(tower, enemy);
-    if (d <= range && enemy.distance > bestDist) {
+    if (distSq(tower, enemy) > rangeSq) continue;
+
+    let key: number;
+    switch (mode) {
+      case 'first':     key = enemy.distance; break;
+      case 'last':      key = -enemy.distance; break;
+      case 'strongest': key = enemy.hp + enemy.shieldHp; break;
+      case 'closest':   key = -distSq(tower, enemy); break;
+    }
+
+    if (key > bestKey) {
+      bestKey = key;
       best = enemy;
-      bestDist = enemy.distance;
     }
   }
   return best;
@@ -356,7 +450,14 @@ function findTarget(tower: Tower): Enemy | null {
 function damageEnemy(enemy: Enemy, damage: number, tower?: Tower) {
   if (enemy.phased) return;
 
-  let remaining = damage;
+  // Apply damage type resistance if we have a source tower
+  let effective = damage;
+  if (tower && enemy.type.resist) {
+    const mult = enemy.type.resist[tower.type.damageType];
+    if (mult != null) effective = Math.round(damage * mult);
+  }
+
+  let remaining = effective;
 
   // Shield absorbs damage first
   if (enemy.shieldHp > 0) {
@@ -376,12 +477,9 @@ function damageEnemy(enemy: Enemy, damage: number, tower?: Tower) {
     enemy.sprintTriggered = true;
     enemy.sprintReady = false;
     enemy.speed = enemy.baseSpeed * 4;
+    enemy.sprintTimer = 1.5;
     addFloatingText(enemy.x, enemy.y - 12, 'SPRINT!', enemy.type.color);
     spawnParticleBurst(enemy.x, enemy.y, enemy.type.color, 8, 80, 2);
-    // Speed resets after 1.5s via slowTimer trick (handled in update)
-    setTimeout(() => {
-      if (enemy.alive) enemy.speed = enemy.baseSpeed;
-    }, 1500);
   }
 
   if (enemy.hp <= 0 && enemy.alive) {
@@ -445,9 +543,10 @@ function damageEnemy(enemy: Enemy, damage: number, tower?: Tower) {
 }
 
 function fireProjectile(tower: Tower, target: Enemy) {
+  if (!target.alive) return;
   const stats = tower.type.levels[tower.level];
   const isOC = tower.overchargeTime > 0;
-  const dmgMult = isOC ? 1.5 : 1;
+  const dmgMult = isOC ? OVERCHARGE_DAMAGE_MULT : 1;
   const damage = Math.round(stats.damage * dmgMult);
   const hasChains = stats.chains != null;
 
@@ -467,7 +566,7 @@ function fireProjectile(tower: Tower, target: Enemy) {
       const sr = stats.splashRadius! * CELL;
       for (const e of enemies) {
         if (!e.alive || e.id === target.id) continue;
-        if (dist(e, target) <= sr) damageEnemy(e, Math.round(damage * 0.5), tower);
+        if (dist(e, target) <= sr) damageEnemy(e, Math.round(damage * SPLASH_SECONDARY_MULT), tower);
       }
       addParticle({ x: target.x, y: target.y, vx: 0, vy: 0, life: 0.25, color: tower.type.color, size: 0, type: 'ring', ringRadius: 5, ringMaxRadius: sr });
     }
@@ -484,7 +583,7 @@ function fireProjectile(tower: Tower, target: Enemy) {
       if (!closest) break;
       hitIds.add(closest.id);
       chainTargets.push({ x: closest.x, y: closest.y });
-      damageEnemy(closest, Math.round(damage * 0.7), tower);
+      damageEnemy(closest, Math.round(damage * CHAIN_DAMAGE_FALLOFF), tower);
       if (hasSlow) {
         closest.slowTimer = (stats.slowDuration ?? 2000) / 1000;
         closest.slowAmount = stats.slowAmount!;
@@ -493,7 +592,7 @@ function fireProjectile(tower: Tower, target: Enemy) {
         const sr = stats.splashRadius! * CELL;
         for (const e of enemies) {
           if (!e.alive || hitIds.has(e.id)) continue;
-          if (dist(e, closest!) <= sr) damageEnemy(e, Math.round(damage * 0.3), tower);
+          if (dist(e, closest!) <= sr) damageEnemy(e, Math.round(damage * CHAIN_SPLASH_MULT), tower);
         }
         addParticle({ x: closest.x, y: closest.y, vx: 0, vy: 0, life: 0.2, color: tower.type.color, size: 0, type: 'ring', ringRadius: 5, ringMaxRadius: sr });
       }
@@ -571,10 +670,21 @@ export function update(dt: number): void {
       }
     }
 
+    // Sprint timer (takes priority over slow while active)
+    if (enemy.sprintTimer > 0) {
+      enemy.sprintTimer -= gameDt;
+      if (enemy.sprintTimer <= 0) {
+        enemy.sprintTimer = 0;
+        enemy.speed = enemy.baseSpeed;
+      }
+    }
+
     if (enemy.slowTimer > 0) {
       enemy.slowTimer -= gameDt;
-      enemy.speed = enemy.baseSpeed * (1 - enemy.slowAmount);
-      if (enemy.slowTimer <= 0 && !enemy.sprintTriggered) enemy.speed = enemy.baseSpeed;
+      if (enemy.sprintTimer <= 0) {
+        enemy.speed = enemy.baseSpeed * (1 - enemy.slowAmount);
+      }
+      if (enemy.slowTimer <= 0 && enemy.sprintTimer <= 0) enemy.speed = enemy.baseSpeed;
     }
 
     enemy.distance += enemy.speed * CELL * gameDt;
@@ -587,7 +697,11 @@ export function update(dt: number): void {
       enemy.alive = false;
       state.waveEnemiesCleared++;
       enemies.splice(i, 1);
-      spawnParticleBurst(pos.x, pos.y, '#ff0000', 8, 60, 3);
+      // Life-loss feedback
+      state.lifeFlash = 1.0;
+      state.shake = Math.max(state.shake, 0.3);
+      spawnParticleBurst(pos.x, pos.y, '#ff0044', 18, 140, 5);
+      addFloatingText(pos.x, pos.y - 20, '-1 LIFE', '#ff0044');
       if (state.lives <= 0) { state.lives = 0; state.phase = 'gameover'; return; }
     }
   }
@@ -644,7 +758,7 @@ export function update(dt: number): void {
     if (tower.pulseAnim > 0) tower.pulseAnim -= gameDt * 3;
 
     const isOC = tower.overchargeTime > 0;
-    const effectiveRate = isOC ? stats.fireRate / 2.5 : stats.fireRate;
+    const effectiveRate = isOC ? stats.fireRate / OVERCHARGE_FIRE_MULT : stats.fireRate;
 
     if (tower.target && now - tower.lastFired >= effectiveRate / state.speed) {
       fireProjectile(tower, tower.target);
@@ -661,7 +775,7 @@ export function update(dt: number): void {
     if (!target) { proj.alive = false; projectiles.splice(i, 1); continue; }
 
     proj.trail.push({ x: proj.x, y: proj.y });
-    if (proj.trail.length > 8) proj.trail.shift();
+    if (proj.trail.length > 16) proj.trail.shift();
 
     const angle = angleTo(proj, target);
     proj.x += Math.cos(angle) * proj.speed * gameDt;
@@ -716,6 +830,19 @@ export function update(dt: number): void {
   if (state.announcement) {
     state.announcement.timer -= gameDt;
     if (state.announcement.timer <= 0) state.announcement = null;
+  }
+
+  // Life flash & shake decay (real-time dt, not gameDt, so paused doesn't freeze feedback)
+  if (state.lifeFlash > 0) {
+    state.lifeFlash = Math.max(0, state.lifeFlash - dt * 2);
+  }
+  if (state.shake > 0) {
+    state.shake = Math.max(0, state.shake - dt * 1.5);
+  }
+
+  // Frost Nova cooldown (uses gameDt so speed/pause respected)
+  if (state.frostCooldown > 0) {
+    state.frostCooldown = Math.max(0, state.frostCooldown - gameDt);
   }
 
   // Floating texts

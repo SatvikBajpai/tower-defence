@@ -15,6 +15,8 @@ export interface TowerLevel {
   upgradeCost?: number;
 }
 
+export type DamageType = 'energy' | 'blast' | 'frost';
+
 export interface TowerType {
   id: string;
   name: string;
@@ -24,6 +26,7 @@ export interface TowerType {
   description: string;
   key: string;
   levels: TowerLevel[];
+  damageType: DamageType;
   fusion?: boolean;
   fusionOf?: [string, string];
 }
@@ -44,7 +47,10 @@ export interface Tower {
   target: Enemy | null;
   pulseAnim: number;
   overchargeTime: number;
+  targetingMode: TargetingMode;
 }
+
+export type TargetingMode = 'first' | 'last' | 'strongest' | 'closest';
 
 export type EnemyAbility = 'none' | 'phase' | 'split' | 'necro' | 'shield' | 'sprint';
 
@@ -58,6 +64,7 @@ export interface EnemyType {
   size: number;
   shape: 'triangle' | 'diamond' | 'hexagon' | 'circle' | 'octagon' | 'star' | 'cross';
   ability: EnemyAbility;
+  resist?: Partial<Record<DamageType, number>>;
 }
 
 export interface Enemy {
@@ -83,6 +90,7 @@ export interface Enemy {
   shieldMax: number;
   sprintReady: boolean;
   sprintTriggered: boolean;
+  sprintTimer: number;
 }
 
 export interface Projectile {
@@ -167,7 +175,10 @@ export interface GameState {
   levelWavesTotal: number;
   levelName: string;
   waveCountdown: number;
-  announcement: { wave: number; name: string; timer: number } | null;
+  announcement: { wave: number; name: string; timer: number; maxTimer: number; isBoss: boolean } | null;
+  lifeFlash: number;
+  shake: number;
+  frostCooldown: number;
   selectedTowerType: string | null;
   selectedTower: Tower | null;
   mouseGrid: Point | null;

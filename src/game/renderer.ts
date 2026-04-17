@@ -5,7 +5,7 @@ import {
 import { pathCells, pathWaypoints, canPlace } from './path';
 import {
   state, towers, enemies, projectiles, particles,
-  floatingTexts, arcEffects,
+  floatingTexts, arcEffects, getAdjacentFusionTargets,
 } from './engine';
 import type { Enemy, Tower } from './types';
 
@@ -297,9 +297,45 @@ function drawTower(ctx: CanvasRenderingContext2D, tower: Tower, time: number) {
   ctx.shadowBlur = isOC ? 14 : glowIntensity;
 
   if (isFusion) {
-    // Fusion outer hex
+    // Fusion shimmer aura - pulsing outer halo with shifting hue
+    ctx.save();
+    const shimmer = 0.5 + 0.3 * Math.sin(time * 0.004);
+    ctx.globalAlpha = 0.25 * shimmer;
+    ctx.shadowColor = type.color;
+    ctx.shadowBlur = 24;
+    const shimmerGrad = ctx.createRadialGradient(x, y, r * 0.5, x, y, r * 1.6);
+    shimmerGrad.addColorStop(0, `${type.color}00`);
+    shimmerGrad.addColorStop(0.5, `${type.color}80`);
+    shimmerGrad.addColorStop(1, `${type.color}00`);
+    ctx.fillStyle = shimmerGrad;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Outer spikes (8 star-like spikes around the hex)
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(time * 0.0005);
+    for (let i = 0; i < 8; i++) {
+      const a = (Math.PI * 2 * i) / 8;
+      const spikeLen = r + 8 + 2 * Math.sin(time * 0.003 + i);
+      ctx.strokeStyle = `${type.color}${Math.round(60 + 40 * Math.sin(time * 0.003 + i)).toString(16)}`;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * (r + 2), Math.sin(a) * (r + 2));
+      ctx.lineTo(Math.cos(a) * spikeLen, Math.sin(a) * spikeLen);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Fusion outer hex (with gradient fill for depth)
     hexPath(ctx, x, y, r);
-    ctx.fillStyle = type.colorDark;
+    const innerGrad = ctx.createRadialGradient(x, y, 0, x, y, r);
+    innerGrad.addColorStop(0, type.color + '30');
+    innerGrad.addColorStop(0.7, type.colorDark);
+    innerGrad.addColorStop(1, type.colorDark);
+    ctx.fillStyle = innerGrad;
     ctx.fill();
     ctx.strokeStyle = type.color;
     ctx.lineWidth = borderWidth;
@@ -842,6 +878,13 @@ export function invalidateBackground() {
 export function render(ctx: CanvasRenderingContext2D, _time: number): void {
   ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
+  // Screen shake
+  ctx.save();
+  if (state.shake > 0) {
+    const mag = state.shake * 12;
+    ctx.translate((Math.random() - 0.5) * mag, (Math.random() - 0.5) * mag);
+  }
+
   if (!bgCanvas) bgCanvas = buildBackground();
   ctx.drawImage(bgCanvas, 0, 0);
 
@@ -878,6 +921,47 @@ export function render(ctx: CanvasRenderingContext2D, _time: number): void {
       ctx.fill();
       ctx.strokeStyle = ok ? '#00ff88' : '#ff0044';
       ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // Fusion indicator - when a tower is selected and has fusion-eligible neighbors,
+  // draw a connector showing which neighbor will be absorbed and where the fusion appears.
+  const sel = state.selectedTower;
+  if (sel && !sel.type.fusion) {
+    const fusionTargets = getAdjacentFusionTargets(sel);
+    for (const ft of fusionTargets) {
+      const pulse = 0.5 + 0.5 * Math.sin(_time * 0.006);
+      ctx.save();
+      ctx.globalAlpha = 0.4 + pulse * 0.4;
+      ctx.strokeStyle = '#ff00ff';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#ff00ff';
+      ctx.shadowBlur = 10;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(sel.x, sel.y);
+      ctx.lineTo(ft.neighbor.x, ft.neighbor.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Anchor marker ◉ at selected tower
+      ctx.globalAlpha = 0.6 + pulse * 0.4;
+      ctx.fillStyle = '#ff00ff';
+      ctx.beginPath();
+      ctx.arc(sel.x, sel.y - CELL * 0.7, 4 + pulse * 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // "CONSUME" X marker on neighbor
+      ctx.strokeStyle = '#ff00ff';
+      ctx.lineWidth = 2;
+      const xs = 5;
+      ctx.beginPath();
+      ctx.moveTo(ft.neighbor.x - xs, ft.neighbor.y - CELL * 0.7 - xs);
+      ctx.lineTo(ft.neighbor.x + xs, ft.neighbor.y - CELL * 0.7 + xs);
+      ctx.moveTo(ft.neighbor.x + xs, ft.neighbor.y - CELL * 0.7 - xs);
+      ctx.lineTo(ft.neighbor.x - xs, ft.neighbor.y - CELL * 0.7 + xs);
       ctx.stroke();
       ctx.restore();
     }
@@ -969,24 +1053,22 @@ export function render(ctx: CanvasRenderingContext2D, _time: number): void {
   // ---- WAVE ANNOUNCEMENT ----
   const ann = state.announcement;
   if (ann) {
-    const maxT = 2.5;
+    const maxT = ann.maxTimer;
     const t = 1 - ann.timer / maxT; // 0 -> 1
     const cx = CANVAS_W / 2;
     const cy = CANVAS_H / 2;
 
-    // Phase: 0-0.3 slide in, 0.3-0.7 hold, 0.7-1.0 fade out
     let alpha: number;
     let slideX: number;
-    if (t < 0.15) {
-      // Slam in from left
-      const p = t / 0.15;
+    if (t < 0.1) {
+      const p = t / 0.1;
       alpha = p;
-      slideX = (1 - p * p) * -200;
-    } else if (t < 0.7) {
+      slideX = (1 - p * p) * -250;
+    } else if (t < 0.8) {
       alpha = 1;
       slideX = 0;
     } else {
-      const p = (t - 0.7) / 0.3;
+      const p = (t - 0.8) / 0.2;
       alpha = 1 - p;
       slideX = 0;
     }
@@ -994,50 +1076,37 @@ export function render(ctx: CanvasRenderingContext2D, _time: number): void {
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    // Full-width dark band
-    const bandH = 80;
+    const bandH = ann.isBoss ? 100 : 80;
     const bandY = cy - bandH / 2;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
     ctx.fillRect(0, bandY, CANVAS_W, bandH);
 
-    // Scan line accent at top and bottom of band
-    const isBoss = ann.name === ann.name.toUpperCase();
-    const accentColor = isBoss ? '#ff0044' : '#00ffff';
+    const accentColor = ann.isBoss ? '#ff0044' : '#00ffff';
     ctx.shadowColor = accentColor;
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 10;
     ctx.fillStyle = accentColor;
-    ctx.fillRect(0, bandY, CANVAS_W, 1.5);
-    ctx.fillRect(0, bandY + bandH - 1.5, CANVAS_W, 1.5);
+    ctx.fillRect(0, bandY, CANVAS_W, 2);
+    ctx.fillRect(0, bandY + bandH - 2, CANVAS_W, 2);
 
-    // Glitch offset for boss waves
-    const glitchX = isBoss ? (Math.random() - 0.5) * 4 * alpha : 0;
-    const glitchY = isBoss ? (Math.random() - 0.5) * 2 * alpha : 0;
+    const glitchX = ann.isBoss ? (Math.random() - 0.5) * 5 * alpha : 0;
+    const glitchY = ann.isBoss ? (Math.random() - 0.5) * 2 * alpha : 0;
 
-    // Wave number
     ctx.shadowBlur = 0;
-    ctx.fillStyle = `${accentColor}88`;
-    ctx.font = '600 11px "Orbitron", sans-serif';
+    ctx.fillStyle = `${accentColor}aa`;
+    ctx.font = '600 12px "Orbitron", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.letterSpacing = '4px';
-    ctx.fillText(
-      `WAVE ${ann.wave}`,
-      cx + slideX + glitchX, cy - 18 + glitchY,
-    );
+    const label = ann.isBoss ? `◆ BOSS WAVE ${ann.wave} ◆` : `WAVE ${ann.wave}`;
+    ctx.fillText(label, cx + slideX + glitchX, cy - (ann.isBoss ? 24 : 18) + glitchY);
 
-    // Wave name - big and dramatic
     ctx.shadowColor = accentColor;
-    ctx.shadowBlur = isBoss ? 20 : 10;
-    ctx.fillStyle = isBoss ? '#ff0044' : '#ffffff';
-    ctx.font = `900 ${isBoss ? 28 : 24}px "Orbitron", sans-serif`;
-    ctx.fillText(
-      ann.name,
-      cx + slideX + glitchX * 2, cy + 10 + glitchY,
-    );
+    ctx.shadowBlur = ann.isBoss ? 24 : 12;
+    ctx.fillStyle = ann.isBoss ? '#ff0044' : '#ffffff';
+    ctx.font = `900 ${ann.isBoss ? 34 : 26}px "Orbitron", sans-serif`;
+    ctx.fillText(ann.name, cx + slideX + glitchX * 2, cy + (ann.isBoss ? 12 : 10) + glitchY);
 
-    // Boss waves: extra red glow flash
-    if (isBoss && t < 0.3) {
-      ctx.globalAlpha = alpha * 0.15 * (1 - t / 0.3);
+    if (ann.isBoss && t < 0.3) {
+      ctx.globalAlpha = alpha * 0.18 * (1 - t / 0.3);
       ctx.fillStyle = '#ff0044';
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
     }
@@ -1083,6 +1152,31 @@ export function render(ctx: CanvasRenderingContext2D, _time: number): void {
       ctx.stroke();
     }
 
+    ctx.restore();
+  }
+
+  // Close shake transform
+  ctx.restore();
+
+  // ---- LIFE FLASH (drawn after shake to cover full screen) ----
+  if (state.lifeFlash > 0) {
+    ctx.save();
+    ctx.globalAlpha = state.lifeFlash * 0.35;
+    const grad = ctx.createRadialGradient(
+      CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.2,
+      CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.7,
+    );
+    grad.addColorStop(0, 'rgba(255, 0, 68, 0)');
+    grad.addColorStop(1, 'rgba(255, 0, 68, 0.9)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    // Edge glow band
+    ctx.globalAlpha = state.lifeFlash * 0.6;
+    ctx.strokeStyle = '#ff0044';
+    ctx.lineWidth = 4;
+    ctx.shadowColor = '#ff0044';
+    ctx.shadowBlur = 20;
+    ctx.strokeRect(0, 0, CANVAS_W, CANVAS_H);
     ctx.restore();
   }
 }

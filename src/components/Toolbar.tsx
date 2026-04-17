@@ -1,5 +1,5 @@
-import { TOWER_TYPES } from '../game/config';
-import { state, startWave } from '../game/engine';
+import { TOWER_TYPES, FROST_NOVA_COOLDOWN } from '../game/config';
+import { state, startWave, castFrostNova } from '../game/engine';
 
 interface Props {
   onStateChange: () => void;
@@ -46,35 +46,57 @@ export default function Toolbar({ onStateChange }: Props) {
       </div>
 
       <div className="toolbar-actions">
-        {canSend && state.levelWave === 0 && (
-          <button
-            className="action-btn send-wave ready"
-            onClick={() => { startWave(); onStateChange(); }}
-          >
-            <span>START</span>
-            <span className="action-key">SPACE</span>
-          </button>
-        )}
-
-        {canSend && state.levelWave > 0 && (
-          <div className="wave-countdown">
-            <span className="wc-label">NEXT WAVE</span>
-            <span className="wc-timer">{Math.ceil(state.waveCountdown)}s</span>
+        {/* Fixed-width wave slot - same width across all phases so nothing shifts */}
+        <div className="wave-slot">
+          {canSend && state.levelWave === 0 && (
             <button
-              className="wc-skip"
+              className="action-btn send-wave ready"
               onClick={() => { startWave(); onStateChange(); }}
             >
-              SKIP
+              <span>START WAVE</span>
+              <span className="action-key">SPACE</span>
             </button>
-          </div>
-        )}
+          )}
 
-        {isActive && (
-          <div className="wave-status">
-            <span className="wave-status-name">{state.waveName}</span>
-            <span className="wave-status-count">{state.waveEnemiesCleared}/{state.waveEnemiesTotal}</span>
-          </div>
-        )}
+          {canSend && state.levelWave > 0 && (
+            <div className="wave-countdown">
+              <span className="wc-label">NEXT</span>
+              <span className="wc-timer">{Math.ceil(state.waveCountdown)}s</span>
+              <button
+                className="wc-skip"
+                onClick={() => { startWave(); onStateChange(); }}
+              >
+                SKIP
+              </button>
+            </div>
+          )}
+
+          {isActive && (
+            <div className="wave-status">
+              <span className="wave-status-name">{state.waveName}</span>
+              <span className="wave-status-count">{state.waveEnemiesCleared}/{state.waveEnemiesTotal}</span>
+            </div>
+          )}
+        </div>
+
+        <button
+          className={`action-btn frost-btn ${state.frostCooldown === 0 ? 'ready' : 'cooling'}`}
+          onClick={() => { castFrostNova(); onStateChange(); }}
+          disabled={state.frostCooldown > 0}
+          title="Freeze all enemies for 3s"
+        >
+          <span className="frost-icon">❄</span>
+          <span className="frost-label">
+            {state.frostCooldown > 0 ? `${Math.ceil(state.frostCooldown)}s` : 'FROST'}
+          </span>
+          <span className="action-key">Z</span>
+          {state.frostCooldown > 0 && (
+            <div
+              className="frost-cd-fill"
+              style={{ width: `${(1 - state.frostCooldown / FROST_NOVA_COOLDOWN) * 100}%` }}
+            />
+          )}
+        </button>
 
         <button
           className={`action-btn speed-btn ${state.speed > 1 ? 'active' : ''}`}
